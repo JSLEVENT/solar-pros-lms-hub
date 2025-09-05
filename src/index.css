@@ -2,41 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Solar Pros LMS Design System - Professional Energy Industry Aesthetic */
 
 @layer base {
   :root {
+    /* Core Brand Colors - Solar Industry Theme */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 3.9%;
 
+    --solar-red: 0 73% 50%;          /* #D32F2F - Primary brand color */
+    --solar-red-light: 0 73% 60%;    /* Lighter red for hovers */
+    --solar-red-dark: 0 73% 40%;     /* Darker red for active states */
+    
+    --energy-black: 0 0% 0%;         /* Pure black for headers */
+    --carbon-grey: 0 0% 20%;         /* Dark grey for text */
+    --panel-grey: 0 0% 96%;          /* Light grey for backgrounds */
+    --steel-grey: 0 0% 64%;          /* Medium grey for borders */
+
+    /* Design System Colors */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 3.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 73% 50%;            /* Solar red */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 96%;           /* Panel grey */
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 73% 50%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 120 50% 40%;          /* Green for progress/success */
+    --success-foreground: 0 0% 98%;
 
-    --radius: 0.5rem;
+    --warning: 43 96% 56%;           /* Orange for warnings */
+    --warning-foreground: 0 0% 9%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 73% 50%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-solar: linear-gradient(135deg, hsl(var(--solar-red)), hsl(var(--solar-red-dark)));
+    --gradient-energy: linear-gradient(135deg, hsl(var(--energy-black)), hsl(var(--carbon-grey)));
+    --gradient-panel: linear-gradient(180deg, hsl(var(--background)), hsl(var(--panel-grey)));
+
+    /* Shadows */
+    --shadow-solar: 0 10px 30px -10px hsl(var(--solar-red) / 0.3);
+    --shadow-elegant: 0 4px 20px -2px hsl(var(--energy-black) / 0.1);
+    --shadow-card: 0 2px 10px -2px hsl(var(--energy-black) / 0.1);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,33 +85,48 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --solar-red: 0 73% 55%;          /* Slightly brighter red for dark mode */
+    --solar-red-light: 0 73% 65%;
+    --solar-red-dark: 0 73% 45%;
+    
+    --energy-black: 0 0% 8%;         /* Softer black for dark backgrounds */
+    --carbon-grey: 0 0% 80%;         /* Light grey for dark mode text */
+    --panel-grey: 0 0% 8%;           /* Dark panel background */
+    --steel-grey: 0 0% 36%;          /* Darker borders */
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --primary: 0 73% 55%;
+    --primary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 63%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 0 73% 55%;
+    --accent-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 120 50% 50%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 43 96% 60%;
+    --warning-foreground: 0 0% 9%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 73% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
