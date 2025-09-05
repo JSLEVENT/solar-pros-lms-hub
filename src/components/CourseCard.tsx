@@ -20,7 +20,7 @@ interface CourseCardProps {
     status: 'not-enrolled' | 'in-progress' | 'completed';
     thumbnail?: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced';
-    price?: number;
+    // Price removed - internal platform
   };
   variant?: 'catalog' | 'enrolled';
 }
@@ -135,19 +135,15 @@ export function CourseCard({ course, variant = 'catalog' }: CourseCardProps) {
               <span>{course.rating}</span>
             </div>
           </div>
-          {course.price !== undefined && variant === 'catalog' && (
-            <div className="font-semibold text-foreground">
-              {course.price === 0 ? 'Free' : `$${course.price}`}
-            </div>
-          )}
+          {/* Pricing removed - internal platform */}
         </div>
       </CardContent>
 
       <CardFooter className="pt-0">
         {variant === 'catalog' ? (
-          <Button className="w-full" variant={course.price === 0 ? "default" : "default"}>
+          <Button className="w-full" variant="default">
             {course.status === 'not-enrolled' 
-              ? (course.price === 0 ? 'Enroll Now' : 'Purchase Course')
+              ? 'Enroll Now'
               : 'Continue Learning'
             }
           </Button>

@@ -52,8 +52,7 @@ interface Course {
   title: string;
   category: string;
   level: string;
-  price: number;
-  is_paid: boolean;
+  // Pricing removed - internal platform
   status: string;
   instructor: { full_name: string };
   enrollment_count: number;
@@ -75,8 +74,7 @@ export default function AdminDashboard() {
     category: '',
     level: 'beginner',
     duration: '',
-    price: 0,
-    is_paid: false
+    // Pricing removed - internal platform
   });
 
   // User Management States
@@ -193,8 +191,7 @@ export default function AdminDashboard() {
         category: '',
         level: 'beginner',
         duration: '',
-        price: 0,
-        is_paid: false
+        // Pricing removed - internal platform
       });
 
       fetchAdminData();
@@ -545,12 +542,7 @@ export default function AdminDashboard() {
                         value={newCourse.duration}
                         onChange={(e) => setNewCourse({ ...newCourse, duration: e.target.value })}
                       />
-                      <Input
-                        type="number"
-                        placeholder="Price ($)"
-                        value={newCourse.price}
-                        onChange={(e) => setNewCourse({ ...newCourse, price: Number(e.target.value), is_paid: Number(e.target.value) > 0 })}
-                      />
+                      {/* Price input removed - internal platform */}
                     </div>
                     <Button onClick={createCourse} className="w-full">Create Course</Button>
                   </div>
@@ -568,7 +560,7 @@ export default function AdminDashboard() {
                         <p className="text-sm text-muted-foreground">{course.category} • {course.level}</p>
                         <div className="flex gap-2 mt-2">
                           <Badge variant="outline">{course.enrollment_count} enrolled</Badge>
-                          {course.is_paid && <Badge>${course.price}</Badge>}
+                          {/* Pricing removed - internal platform */}
                           <Badge variant={course.status === 'published' ? 'default' : 'secondary'}>
                             {course.status}
                           </Badge>

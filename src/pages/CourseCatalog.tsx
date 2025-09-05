@@ -18,7 +18,7 @@ interface Course {
   category: string;
   level: string;
   duration: string;
-  price: number;
+  // Price removed - internal platform
   image_url?: string;
   instructor_id: string;
   profiles: {
@@ -37,7 +37,7 @@ export default function CourseCatalog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
-  const [priceFilter, setPriceFilter] = useState('all');
+  // Price filter removed - internal platform
 
   useEffect(() => {
     fetchCourses();
@@ -152,14 +152,7 @@ export default function CourseCatalog() {
     const matchesCategory = categoryFilter === 'all' || course.category === categoryFilter;
     const matchesLevel = levelFilter === 'all' || course.level === levelFilter;
     
-    let matchesPrice = true;
-    if (priceFilter === 'free') {
-      matchesPrice = course.price === 0;
-    } else if (priceFilter === 'paid') {
-      matchesPrice = course.price > 0;
-    }
-    
-    return matchesSearch && matchesCategory && matchesLevel && matchesPrice;
+    return matchesSearch && matchesCategory && matchesLevel;
   });
 
   const categories = [...new Set(courses.map(c => c.category))];
@@ -287,17 +280,7 @@ export default function CourseCatalog() {
                 </SelectContent>
               </Select>
 
-              <Select value={priceFilter} onValueChange={setPriceFilter}>
-                <SelectTrigger className="w-[140px] h-12 border-0 bg-secondary/50 rounded-2xl hover:bg-secondary transition-colors">
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Price" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Prices</SelectItem>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Price filter removed - internal platform */}
               
               {/* Quick Filter Buttons */}
               <Button variant="outline" size="sm" className="h-12 px-6 rounded-2xl border-0 bg-secondary/50">
@@ -350,14 +333,12 @@ export default function CourseCatalog() {
                         </Badge>
                       </div>
                       
-                      {/* Free Badge */}
-                      {course.price === 0 && (
-                        <div className="absolute top-4 left-4">
-                          <Badge className="bg-gradient-to-r from-success to-success/80 text-white backdrop-blur-sm shadow-lg animate-pulse">
-                            FREE COURSE
-                          </Badge>
-                        </div>
-                      )}
+                      {/* Internal platform - all courses are free */}
+                      <div className="absolute top-4 left-4">
+                        <Badge className="bg-gradient-to-r from-primary to-primary/80 text-white backdrop-blur-sm shadow-lg">
+                          INTERNAL TRAINING
+                        </Badge>
+                      </div>
                       
                       {/* Popularity Indicator */}
                       <div className="absolute bottom-4 left-4">
@@ -414,22 +395,8 @@ export default function CourseCatalog() {
 
                       <Separator className="my-4" />
 
-                      {/* Price and Action */}
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center gap-2">
-                          {course.price > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <DollarSign className="h-5 w-5 text-primary" />
-                              <span className="text-2xl font-bold text-primary">
-                                ${course.price}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-2xl font-bold bg-gradient-to-r from-success to-success/80 bg-clip-text text-transparent">
-                              Free
-                            </span>
-                          )}
-                        </div>
+                      {/* Action */}
+                      <div className="flex items-center justify-end pt-2">
 
                         {course.is_enrolled ? (
                           <Button variant="secondary" size="sm" disabled className="group/enrolled">

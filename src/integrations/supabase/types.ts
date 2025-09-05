@@ -387,11 +387,8 @@ export type Database = {
           id: string
           image_url: string | null
           instructor_id: string | null
-          is_paid: boolean | null
           level: string | null
-          price: number | null
           status: string | null
-          stripe_price_id: string | null
           title: string
           updated_at: string
         }
@@ -403,11 +400,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string | null
-          is_paid?: boolean | null
           level?: string | null
-          price?: number | null
           status?: string | null
-          stripe_price_id?: string | null
           title: string
           updated_at?: string
         }
@@ -419,11 +413,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string | null
-          is_paid?: boolean | null
           level?: string | null
-          price?: number | null
           status?: string | null
-          stripe_price_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -688,47 +679,6 @@ export type Database = {
           settings?: Json | null
         }
         Relationships: []
-      }
-      payments: {
-        Row: {
-          amount: number | null
-          course_id: string | null
-          created_at: string
-          currency: string | null
-          id: string
-          status: string | null
-          stripe_session_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          amount?: number | null
-          course_id?: string | null
-          created_at?: string
-          currency?: string | null
-          id?: string
-          status?: string | null
-          stripe_session_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          amount?: number | null
-          course_id?: string | null
-          created_at?: string
-          currency?: string | null
-          id?: string
-          status?: string | null
-          stripe_session_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       profiles: {
         Row: {
