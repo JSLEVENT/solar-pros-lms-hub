@@ -13,6 +13,8 @@ import MyProgress from "./pages/MyProgress";
 import Calendar from "./pages/Calendar";
 import LiveTrainings from "./pages/LiveTrainings";
 import AdminDashboard from "./pages/AdminDashboard";
+import { LMSLayout } from "./components/LMSLayout";
+import { TeamManagement } from "./components/TeamManagement";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +80,16 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/teams" 
+              element={
+                <ProtectedRoute requiredRole="manager">
+                  <LMSLayout>
+                    <TeamManagement />
+                  </LMSLayout>
                 </ProtectedRoute>
               } 
             />

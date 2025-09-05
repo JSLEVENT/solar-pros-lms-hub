@@ -205,7 +205,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUserRole = async (userId: string, newRole: 'owner' | 'admin' | 'manager' | 'learner') => {
     try {
       const { error } = await supabase
         .from('profiles')
@@ -476,14 +476,15 @@ export default function AdminDashboard() {
                         </Badge>
                       </div>
                       <div className="flex gap-2">
-                        <Select value={user.role} onValueChange={(value) => updateUserRole(user.user_id, value)}>
+                        <Select value={user.role} onValueChange={(value: 'owner' | 'admin' | 'manager' | 'learner') => updateUserRole(user.user_id, value)}>
                           <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="learner">Learner</SelectItem>
-                            <SelectItem value="instructor">Instructor</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="owner">Owner</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

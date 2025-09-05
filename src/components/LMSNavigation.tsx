@@ -21,7 +21,7 @@ interface NavigationItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
-  roles: ('learner' | 'instructor' | 'admin')[];
+  roles: ('learner' | 'manager' | 'admin' | 'owner')[];
 }
 
 const navigationItems: NavigationItem[] = [
@@ -29,49 +29,55 @@ const navigationItems: NavigationItem[] = [
     title: "Dashboard",
     href: "/",
     icon: Home,
-    roles: ['learner', 'instructor', 'admin']
+    roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
     title: "My Training",
     href: "/my-training",
     icon: BookOpen,
-    roles: ['learner', 'instructor']
+    roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
     title: "AI Training Arena",
     href: "/ai-training-arena",
     icon: Target,
-    roles: ['learner', 'instructor', 'admin']
+    roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
     title: "My Progress",
     href: "/progress",
     icon: BarChart3,
-    roles: ['learner']
+    roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
     title: "Calendar",
     href: "/calendar",
     icon: Calendar,
-    roles: ['learner', 'instructor', 'admin']
+    roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
     title: "Live Trainings",
     href: "/live-trainings",
     icon: PlayCircle,
-    roles: ['learner', 'instructor', 'admin']
+    roles: ['learner', 'manager', 'admin', 'owner']
+  },
+  {
+    title: "Team Management",
+    href: "/admin/teams",
+    icon: Users,
+    roles: ['manager', 'admin', 'owner']
   },
   // Admin only items
   {
     title: "Admin Dashboard",
     href: "/admin",
     icon: Settings,
-    roles: ['admin']
+    roles: ['admin', 'owner']
   }
 ];
 
 interface LMSNavigationProps {
-  userRole: 'learner' | 'instructor' | 'admin';
+  userRole: 'learner' | 'manager' | 'admin' | 'owner';
   currentPath: string;
   className?: string;
 }
