@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { LMSLayout } from '@/components/LMSLayout';
 import { ModernCard, ModernCardContent, ModernCardHeader, ModernCardTitle } from '@/components/ui/modern-card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,9 @@ import {
   FileText,
   Award,
   Calendar,
-  Mail
+  Mail,
+  UserPlus,
+  Layers
 } from 'lucide-react';
 
 interface AdminStats {
@@ -36,6 +39,8 @@ interface AdminStats {
   totalCertificates: number;
   activeUsers: number;
   completionRate: number;
+  totalTeams?: number;
+  totalManagers?: number;
 }
 
 interface User {
@@ -58,6 +63,24 @@ interface Course {
   enrollment_count: number;
 }
 
+interface TeamSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  member_count: number;
+  manager_count: number;
+  managers: { user_id: string; full_name: string | null }[];
+}
+
+interface TeamAnalyticsRow {
+  team_id: string | null;
+  team_name: string | null;
+  member_count: number | null;
+  avg_progress: number | null;
+  completed_courses: number | null;
+  total_courses_assigned: number | null;
+}
+
 export default function AdminDashboard() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -65,6 +88,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [teams, setTeams] = useState<TeamSummary[]>([]);
+  const [teamAnalytics, setTeamAnalytics] = useState<TeamAnalyticsRow[]>([]);
   const [selectedTab, setSelectedTab] = useState('overview');
 
   // Course Creation States
@@ -91,20 +116,43 @@ export default function AdminDashboard() {
     }
   }, [profile]);
 
+  // Realtime updates for live dashboard
+  useEffect(() => {
+    if (profile?.role !== 'admin') return;
+    const channel = supabase
+      .channel('admin-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'certificates' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_memberships' }, () => fetchAdminData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manager_teams' }, () => fetchAdminData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
+
   const fetchAdminData = async () => {
     try {
       // Fetch basic stats
-      const [usersRes, coursesRes, enrollmentsRes, certificatesRes] = await Promise.all([
+      const [usersRes, coursesRes, enrollmentsRes, certificatesRes, teamsRes, managersRes] = await Promise.all([
         supabase.from('profiles').select('*'),
         supabase.from('courses').select('*'),
         supabase.from('enrollments').select('*'),
-        supabase.from('certificates').select('*')
+        supabase.from('certificates').select('*'),
+        supabase.from('teams').select('*'),
+        supabase.from('profiles').select('user_id').eq('role', 'manager')
       ]);
 
       if (usersRes.error) throw usersRes.error;
       if (coursesRes.error) throw coursesRes.error;
       if (enrollmentsRes.error) throw enrollmentsRes.error;
       if (certificatesRes.error) throw certificatesRes.error;
+      if (teamsRes.error) throw teamsRes.error;
+      if (managersRes.error) throw managersRes.error;
 
       // Calculate stats
       const totalUsers = usersRes.data?.length || 0;
@@ -120,7 +168,9 @@ export default function AdminDashboard() {
         totalEnrollments,
         totalCertificates,
         activeUsers: totalUsers, // Simplified
-        completionRate
+        completionRate,
+        totalTeams: teamsRes.data?.length || 0,
+        totalManagers: managersRes.data?.length || 0
       });
 
       // Fetch detailed user data
@@ -146,6 +196,50 @@ export default function AdminDashboard() {
         instructor: course.profiles,
         enrollment_count: course.enrollments?.[0]?.count || 0
       })) || []);
+
+      // Fetch teams with member and manager counts
+      const { data: teamsWithCounts, error: teamsWithCountsError } = await supabase
+        .from('teams')
+        .select(`
+          id, name, description,
+          team_memberships(count),
+          manager_teams(manager_id)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (teamsWithCountsError) throw teamsWithCountsError;
+
+      // Fetch manager profiles for display
+      const managerIds = Array.from(new Set((teamsWithCounts || []).flatMap(t => (t.manager_teams || []).map((m: any) => m.manager_id)).filter(Boolean)));
+      let managersMap: Record<string, { full_name: string | null }> = {};
+      if (managerIds.length) {
+        const { data: managersProfiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', managerIds as string[]);
+        managersProfiles?.forEach(mp => { managersMap[mp.user_id] = { full_name: mp.full_name }; });
+      }
+
+      const formattedTeams: TeamSummary[] = (teamsWithCounts || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        member_count: t.team_memberships?.[0]?.count || 0,
+        manager_count: (t.manager_teams || []).length,
+        managers: (t.manager_teams || []).map((mt: any) => ({
+          user_id: mt.manager_id,
+          full_name: managersMap[mt.manager_id]?.full_name ?? null
+        }))
+      }));
+
+      setTeams(formattedTeams);
+
+      // Fetch analytics view
+      const { data: ta } = await supabase
+        .from('team_analytics')
+        .select('*')
+        .order('member_count', { ascending: false });
+      setTeamAnalytics((ta || []) as TeamAnalyticsRow[]);
 
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -227,6 +321,35 @@ export default function AdminDashboard() {
         description: 'Failed to update user role',
         variant: 'destructive',
       });
+    }
+  };
+
+  const assignManagerToTeam = async (teamId: string, managerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('manager_teams')
+        .insert({ team_id: teamId, manager_id: managerId, assigned_by: user?.id || null });
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Manager assigned to team' });
+      fetchAdminData();
+    } catch (error) {
+      console.error('Error assigning manager:', error);
+      toast({ title: 'Error', description: 'Failed to assign manager', variant: 'destructive' });
+    }
+  };
+
+  const removeManagerFromTeam = async (teamId: string, managerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('manager_teams')
+        .delete()
+        .match({ team_id: teamId, manager_id: managerId });
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Manager removed from team' });
+      fetchAdminData();
+    } catch (error) {
+      console.error('Error removing manager:', error);
+      toast({ title: 'Error', description: 'Failed to remove manager', variant: 'destructive' });
     }
   };
 
@@ -342,7 +465,7 @@ export default function AdminDashboard() {
 
         {/* Stats Overview */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
             <ModernCard variant="floating">
               <ModernCardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -398,12 +521,40 @@ export default function AdminDashboard() {
                 </div>
               </ModernCardContent>
             </ModernCard>
+
+            <ModernCard variant="floating">
+              <ModernCardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10 flex items-center justify-center">
+                    <Layers className="h-6 w-6 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Teams</p>
+                    <p className="text-2xl font-bold">{stats.totalTeams}</p>
+                  </div>
+                </div>
+              </ModernCardContent>
+            </ModernCard>
+
+            <ModernCard variant="floating">
+              <ModernCardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Managers</p>
+                    <p className="text-2xl font-bold">{stats.totalManagers}</p>
+                  </div>
+                </div>
+              </ModernCardContent>
+            </ModernCard>
           </div>
         )}
 
         {/* Admin Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-16 bg-secondary/50 rounded-2xl p-2">
+          <TabsList className="grid w-full grid-cols-5 h-16 bg-secondary/50 rounded-2xl p-2">
             <TabsTrigger value="overview" className="h-12 rounded-xl text-base">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -415,6 +566,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="courses" className="h-12 rounded-xl text-base">
               <BookOpen className="h-4 w-4 mr-2" />
               Courses
+            </TabsTrigger>
+            <TabsTrigger value="teams" className="h-12 rounded-xl text-base">
+              <Layers className="h-4 w-4 mr-2" />
+              Teams
             </TabsTrigger>
             <TabsTrigger value="analytics" className="h-12 rounded-xl text-base">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -447,17 +602,18 @@ export default function AdminDashboard() {
                       value={newUser.full_name}
                       onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                     />
-                    <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
+          <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select Role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="learner">Learner</SelectItem>
-                        <SelectItem value="instructor">Instructor</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="learner">Learner</SelectItem>
+            <SelectItem value="manager">Manager</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="owner">Owner</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button className="w-full">Create User</Button>
+          <Button className="w-full" disabled title="User invites require a server function or service key">Create User (use server)</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -491,6 +647,63 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </ModernCardContent>
+            </ModernCard>
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Team Management</h2>
+              <Badge variant="secondary">{stats?.totalTeams || 0} teams • {stats?.totalManagers || 0} managers</Badge>
+            </div>
+            <div className="flex justify-end -mt-4">
+              <Button asChild variant="outline">
+                <Link to="/admin/teams">Open Teams Page</Link>
+              </Button>
+            </div>
+            <ModernCard variant="glass">
+              <ModernCardContent className="p-6 space-y-4">
+                {teams.map((team) => (
+                  <div key={team.id} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">{team.name}</p>
+                        <p className="text-sm text-muted-foreground">{team.description || 'No description'}</p>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="outline">{team.member_count} members</Badge>
+                          <Badge variant="outline">{team.manager_count} managers</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-sm text-muted-foreground mb-2">Managers</p>
+                      <div className="flex flex-wrap gap-2">
+                        {team.managers.map((m) => (
+                          <Badge key={m.user_id} variant="secondary" className="flex items-center gap-2">
+                            {m.full_name || m.user_id}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-6 w-6 ml-1"
+                              onClick={() => removeManagerFromTeam(team.id, m.user_id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                        {team.managers.length === 0 && (
+                          <span className="text-sm text-muted-foreground">No managers assigned</span>
+                        )}
+                      </div>
+                      <div className="mt-3 max-w-xs">
+                        <AssignManagerSelect onAssign={(managerId) => assignManagerToTeam(team.id, managerId)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {teams.length === 0 && (
+                  <p className="text-muted-foreground">No teams yet. Create teams from the Teams page.</p>
+                )}
               </ModernCardContent>
             </ModernCard>
           </TabsContent>
@@ -590,16 +803,29 @@ export default function AdminDashboard() {
                   <ModernCardTitle>User Activity</ModernCardTitle>
                 </ModernCardHeader>
                 <ModernCardContent>
-                  <p className="text-muted-foreground">Analytics charts will be implemented here</p>
+                  <p className="text-muted-foreground">Coming soon: activity timelines and funnels</p>
                 </ModernCardContent>
               </ModernCard>
 
               <ModernCard variant="glass">
                 <ModernCardHeader>
-                  <ModernCardTitle>Course Performance</ModernCardTitle>
+                  <ModernCardTitle>Team Analytics</ModernCardTitle>
                 </ModernCardHeader>
                 <ModernCardContent>
-                  <p className="text-muted-foreground">Course completion rates and engagement metrics</p>
+                  <div className="space-y-3">
+                    {teamAnalytics.slice(0, 8).map((t) => (
+                      <div key={t.team_id || Math.random()} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{t.team_name || 'Team'}</p>
+                          <p className="text-sm text-muted-foreground">{t.member_count || 0} members • Avg progress {(t.avg_progress || 0).toFixed(0)}%</p>
+                        </div>
+                        <Badge variant="outline">{t.completed_courses || 0} completed</Badge>
+                      </div>
+                    ))}
+                    {teamAnalytics.length === 0 && (
+                      <p className="text-muted-foreground">No analytics yet.</p>
+                    )}
+                  </div>
                 </ModernCardContent>
               </ModernCard>
             </div>
@@ -650,5 +876,34 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
     </LMSLayout>
+  );
+}
+
+// Lightweight manager assign selector (local to this file)
+function AssignManagerSelect({ onAssign }: { onAssign: (managerId: string) => void }) {
+  const [managers, setManagers] = useState<{ user_id: string; full_name: string | null }[]>([]);
+  useEffect(() => {
+    const loadManagers = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .eq('role', 'manager');
+      setManagers(data || []);
+    };
+    loadManagers();
+  }, []);
+  return (
+    <Select onValueChange={(val) => onAssign(val)}>
+      <SelectTrigger>
+        <SelectValue placeholder="Assign manager" />
+      </SelectTrigger>
+      <SelectContent>
+        {managers.map((m) => (
+          <SelectItem key={m.user_id} value={m.user_id}>
+            {m.full_name || m.user_id}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
