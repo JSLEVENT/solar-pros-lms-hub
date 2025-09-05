@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FolderPlus, Upload, RefreshCcw } from 'lucide-react';
 
 interface Folder { id: string; name: string; parent_id: string | null; }
-interface Asset { id: string; title: string; content_type: string | null; folder_id: string | null; external_url: string | null; file_path: string | null; created_at: string; }
+interface Asset { id: string; title: string; description?: string | null; content_type: string | null; folder_id: string | null; external_url: string | null; file_path: string | null; created_at: string; }
 interface Tag { id: string; name: string; }
 
 export const ContentRepository = () => {
@@ -21,6 +21,7 @@ export const ContentRepository = () => {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [newAsset, setNewAsset] = useState({ title: '', description: '', external_url: '', content_type: 'video', file: null as File | null, tags: [] as string[] });
+  const [editing, setEditing] = useState<Asset | null>(null);
   const [uploading, setUploading] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
 
@@ -128,6 +129,37 @@ export const ContentRepository = () => {
     }
   };
 
+  const updateAsset = async () => {
+    if (!editing) return;
+    const { error } = await supabase.from('content_assets').update({
+      title: editing.title,
+      description: editing.description,
+      external_url: editing.external_url,
+      content_type: editing.content_type
+    }).eq('id', editing.id);
+    if (error) return toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    setEditing(null);
+    fetchAssets();
+  };
+
+  const deleteAsset = async (id: string) => {
+    const { error } = await supabase.from('content_assets').delete().eq('id', id);
+    if (error) return toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    fetchAssets();
+  };
+
+  const currentPath = (() => {
+    if (!selectedFolder) return [] as Folder[];
+    const map = new Map<string, Folder>(folders.map(f => [f.id, f]));
+    const chain: Folder[] = [];
+    let cursor: Folder | null = map.get(selectedFolder) || null;
+    while (cursor) {
+      chain.unshift(cursor);
+      cursor = cursor.parent_id ? map.get(cursor.parent_id) || null : null;
+    }
+    return chain;
+  })();
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -137,7 +169,19 @@ export const ContentRepository = () => {
         </div>
       </div>
 
-      <ModernCard variant="glass">
+      {currentPath.length > 0 && (
+        <div className="text-xs flex flex-wrap gap-1">
+          <button className="underline" onClick={()=> { setSelectedFolder(null); fetchAssets(); }}>Root</button>
+          {currentPath.map((f,i)=> (
+            <span key={f.id}>
+              <span className="mx-1">/</span>
+              <button className="underline" onClick={()=> { setSelectedFolder(f.id); fetchAssets(); }}>{f.name}</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+  <ModernCard variant="glass">
         <ModernCardHeader>
           <ModernCardTitle>Folders</ModernCardTitle>
         </ModernCardHeader>
@@ -158,7 +202,7 @@ export const ContentRepository = () => {
         </ModernCardContent>
       </ModernCard>
 
-      <ModernCard variant="glass">
+  <ModernCard variant="glass">
         <ModernCardHeader>
           <ModernCardTitle>Add Asset</ModernCardTitle>
         </ModernCardHeader>
@@ -191,10 +235,19 @@ export const ContentRepository = () => {
           {assets.length === 0 && <p className="text-sm text-muted-foreground">No assets yet.</p>}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {assets.map(a => (
-              <div key={a.id} className="p-4 border rounded-xl space-y-2">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium line-clamp-1" title={a.title}>{a.title}</p>
-                  <Badge variant="outline" className="text-xs capitalize">{a.content_type || 'asset'}</Badge>
+              <div key={a.id} className="p-4 border rounded-xl space-y-2 group">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate" title={a.title}>{a.title}</p>
+                    {a.description && <p className="text-xs text-muted-foreground line-clamp-2">{a.description}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    <Badge variant="outline" className="text-xs capitalize">{a.content_type || 'asset'}</Badge>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={()=> setEditing(a)} className="text-[10px] px-2 py-0.5 rounded border">Edit</button>
+                      <button onClick={()=> deleteAsset(a.id)} className="text-[10px] px-2 py-0.5 rounded border text-red-600">Del</button>
+                    </div>
+                  </div>
                 </div>
                 {a.external_url && <a className="text-xs text-primary underline" href={a.external_url} target="_blank" rel="noreferrer">Open Link</a>}
                 {a.file_path && <p className="text-xs text-muted-foreground">Stored: {a.file_path}</p>}
@@ -202,6 +255,27 @@ export const ContentRepository = () => {
               </div>
             ))}
           </div>
+          {editing && (
+            <div className="border rounded-xl p-4 space-y-3">
+              <p className="font-medium text-sm">Edit Asset</p>
+              <Input value={editing.title} onChange={e=> setEditing(ed=> ed? {...ed, title:e.target.value }: ed)} />
+              <Textarea value={editing.description||''} onChange={e=> setEditing(ed=> ed? {...ed, description:e.target.value }: ed)} />
+              <Input value={editing.external_url||''} onChange={e=> setEditing(ed=> ed? {...ed, external_url:e.target.value }: ed)} placeholder="External URL" />
+              <Select value={editing.content_type||'asset'} onValueChange={v=> setEditing(ed=> ed? {...ed, content_type:v }: ed)}>
+                <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="doc">Document</SelectItem>
+                  <SelectItem value="link">Link</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={updateAsset}>Save</Button>
+                <Button size="sm" variant="outline" onClick={()=> setEditing(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
         </ModernCardContent>
       </ModernCard>
     </div>

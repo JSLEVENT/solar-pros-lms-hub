@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { ModernCard, ModernCardContent, ModernCardHeader, ModernCardTitle } from '@/components/ui/modern-card';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, GripVertical } from 'lucide-react';
+import { Plus, GripVertical, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface Plan { id: string; name: string; description: string | null; }
 interface Asset { id: string; title: string; }
@@ -61,6 +61,27 @@ export const LearningPlans = () => {
     if (error) return toast({ title: 'Error', description: error.message, variant: 'destructive' });
     setNewItem({ type: 'asset', asset_id: '', course_id: '' });
     loadItems(selectedPlan.id);
+  };
+
+  const moveItem = async (id: string, dir: number) => {
+    if (!selectedPlan) return;
+    const index = items.findIndex(i => i.id === id);
+    if (index < 0) return;
+    const targetIndex = index + dir;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    // swap positions
+    const a = items[index];
+    const b = items[targetIndex];
+    await Promise.all([
+      supabase.from('learning_plan_items').update({ position: b.position }).eq('id', a.id),
+      supabase.from('learning_plan_items').update({ position: a.position }).eq('id', b.id)
+    ]);
+    loadItems(selectedPlan.id);
+  };
+
+  const deleteItem = async (id: string) => {
+    await supabase.from('learning_plan_items').delete().eq('id', id);
+    if (selectedPlan) loadItems(selectedPlan.id);
   };
 
   return (
@@ -123,11 +144,16 @@ export const LearningPlans = () => {
               <Button size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1" />Add</Button>
             </div>
             <div className="space-y-2">
-              {items.map(it => (
-                <div key={it.id} className="flex items-center gap-3 p-3 border rounded-lg bg-background/40">
+              {items.map((it, idx) => (
+                <div key={it.id} className="flex items-center gap-3 p-3 border rounded-lg bg-background/40 group">
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">{it.item_type === 'asset' ? assets.find(a => a.id === it.asset_id)?.title : courses.find(c => c.id === it.course_id)?.title}</p>
-                  <span className="ml-auto text-xs text-muted-foreground uppercase">{it.item_type}</span>
+                  <p className="text-sm font-medium flex-1 truncate">{it.item_type === 'asset' ? assets.find(a => a.id === it.asset_id)?.title : courses.find(c => c.id === it.course_id)?.title}</p>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button disabled={idx===0} onClick={()=> moveItem(it.id,-1)} className="h-7 w-7 inline-flex items-center justify-center rounded border disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
+                    <button disabled={idx===items.length-1} onClick={()=> moveItem(it.id,1)} className="h-7 w-7 inline-flex items-center justify-center rounded border disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
+                    <button onClick={()=> deleteItem(it.id)} className="h-7 w-7 inline-flex items-center justify-center rounded border text-red-600"><Trash2 className="h-3 w-3" /></button>
+                  </div>
+                  <span className="text-xs text-muted-foreground uppercase w-14 text-right">{it.item_type}</span>
                 </div>
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground">No items yet.</p>}

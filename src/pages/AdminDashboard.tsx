@@ -1,3 +1,4 @@
+// LEGACY: This file is being deprecated in favor of modular /admin/* routes.
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LMSLayout } from '@/components/LMSLayout';

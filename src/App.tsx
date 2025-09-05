@@ -12,7 +12,7 @@ import AITrainingArena from "./pages/AITrainingArena";
 import MyProgress from "./pages/MyProgress";
 import Calendar from "./pages/Calendar";
 import LiveTrainings from "./pages/LiveTrainings";
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminIndex from "./pages/admin";
 import { LMSLayout } from "./components/LMSLayout";
 import ProfileSettings from './pages/ProfileSettings';
 import { TeamManagement } from "./components/TeamManagement";
@@ -76,13 +76,13 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/admin" 
+            <Route
+              path="/admin/*"
               element={
-                <ProtectedRoute requiredRole={["admin", "owner"]}>
-                  <AdminDashboard />
+                <ProtectedRoute requiredRole={["admin","owner"]}>
+                  <AdminIndex />
                 </ProtectedRoute>
-              } 
+              }
             />
             <Route
               path="/settings/profile"
