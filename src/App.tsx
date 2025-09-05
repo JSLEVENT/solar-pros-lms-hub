@@ -7,16 +7,12 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import MyCourses from "./pages/MyCourses";
-import CourseCatalog from "./pages/CourseCatalog";
-import Assessments from "./pages/Assessments";
+import MyTraining from "./pages/MyTraining";
+import AITrainingArena from "./pages/AITrainingArena";
 import MyProgress from "./pages/MyProgress";
-import Certificates from "./pages/Certificates";
-import Discussions from "./pages/Discussions";
 import Calendar from "./pages/Calendar";
-import VirtualClasses from "./pages/VirtualClasses";
+import LiveTrainings from "./pages/LiveTrainings";
 import AdminDashboard from "./pages/AdminDashboard";
-import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -38,26 +34,18 @@ const App = () => (
               } 
             />
             <Route 
-              path="/courses" 
+              path="/my-training" 
               element={
                 <ProtectedRoute>
-                  <MyCourses />
+                  <MyTraining />
                 </ProtectedRoute>
               } 
             />
             <Route 
-              path="/catalog" 
+              path="/ai-training-arena" 
               element={
                 <ProtectedRoute>
-                  <CourseCatalog />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/assessments" 
-              element={
-                <ProtectedRoute>
-                  <Assessments />
+                  <AITrainingArena />
                 </ProtectedRoute>
               } 
             />
@@ -70,22 +58,6 @@ const App = () => (
               } 
             />
             <Route 
-              path="/certificates" 
-              element={
-                <ProtectedRoute>
-                  <Certificates />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/discussions" 
-              element={
-                <ProtectedRoute>
-                  <Discussions />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
               path="/calendar" 
               element={
                 <ProtectedRoute>
@@ -94,15 +66,14 @@ const App = () => (
               } 
             />
             <Route 
-              path="/virtual-classes" 
+              path="/live-trainings" 
               element={
                 <ProtectedRoute>
-                  <VirtualClasses />
+                  <LiveTrainings />
                 </ProtectedRoute>
               } 
             />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="*" element={<div>Page Not Found</div>} />
           </Routes>
         </BrowserRouter>

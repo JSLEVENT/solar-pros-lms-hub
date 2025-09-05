@@ -32,20 +32,14 @@ const navigationItems: NavigationItem[] = [
     roles: ['learner', 'instructor', 'admin']
   },
   {
-    title: "My Courses",
-    href: "/courses",
+    title: "My Training",
+    href: "/my-training",
     icon: BookOpen,
     roles: ['learner', 'instructor']
   },
   {
-    title: "Course Catalog",
-    href: "/catalog",
-    icon: GraduationCap,
-    roles: ['learner', 'instructor', 'admin']
-  },
-  {
-    title: "Assessments",
-    href: "/assessments",
+    title: "AI Training Arena",
+    href: "/ai-training-arena",
     icon: Target,
     roles: ['learner', 'instructor', 'admin']
   },
@@ -56,52 +50,21 @@ const navigationItems: NavigationItem[] = [
     roles: ['learner']
   },
   {
-    title: "Certificates",
-    href: "/certificates",
-    icon: Award,
-    roles: ['learner', 'instructor', 'admin']
-  },
-  {
-    title: "Discussions",
-    href: "/forums",
-    icon: MessageSquare,
-    badge: "3",
-    roles: ['learner', 'instructor', 'admin']
-  },
-  {
     title: "Calendar",
     href: "/calendar",
     icon: Calendar,
     roles: ['learner', 'instructor', 'admin']
   },
   {
-    title: "Virtual Classes",
-    href: "/webinars",
+    title: "Live Trainings",
+    href: "/live-trainings",
     icon: PlayCircle,
     roles: ['learner', 'instructor', 'admin']
   },
-  // Admin/Instructor only items
+  // Admin only items
   {
-    title: "User Management",
-    href: "/admin/users",
-    icon: Users,
-    roles: ['admin']
-  },
-  {
-    title: "Content Management",
-    href: "/admin/content",
-    icon: FileText,
-    roles: ['admin', 'instructor']
-  },
-  {
-    title: "Analytics",
-    href: "/admin/analytics",
-    icon: BarChart3,
-    roles: ['admin']
-  },
-  {
-    title: "System Settings",
-    href: "/admin/settings",
+    title: "Admin Dashboard",
+    href: "/admin",
     icon: Settings,
     roles: ['admin']
   }
