@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       assessment_results: {
         Row: {
           answers: Json | null
@@ -122,6 +152,72 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      certificate_templates: {
+        Row: {
+          background_url: string | null
+          created_at: string
+          fields: Json | null
+          id: string
+          name: string
+          template_url: string | null
+        }
+        Insert: {
+          background_url?: string | null
+          created_at?: string
+          fields?: Json | null
+          id?: string
+          name: string
+          template_url?: string | null
+        }
+        Update: {
+          background_url?: string | null
+          created_at?: string
+          fields?: Json | null
+          id?: string
+          name?: string
+          template_url?: string | null
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           certificate_url: string | null
@@ -129,6 +225,8 @@ export type Database = {
           expires_at: string | null
           id: string
           issued_at: string
+          status: string | null
+          template_id: string | null
           user_id: string | null
           verification_code: string | null
         }
@@ -138,6 +236,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           issued_at?: string
+          status?: string | null
+          template_id?: string | null
           user_id?: string | null
           verification_code?: string | null
         }
@@ -147,6 +247,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           issued_at?: string
+          status?: string | null
+          template_id?: string | null
           user_id?: string | null
           verification_code?: string | null
         }
@@ -156,6 +258,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
             referencedColumns: ["id"]
           },
           {
@@ -206,6 +315,69 @@ export type Database = {
           },
         ]
       }
+      course_content: {
+        Row: {
+          content_type: string
+          content_url: string | null
+          course_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          file_size: number | null
+          id: string
+          is_downloadable: boolean | null
+          metadata: Json | null
+          module_id: string | null
+          order_index: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_type: string
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_size?: number | null
+          id?: string
+          is_downloadable?: boolean | null
+          metadata?: Json | null
+          module_id?: string | null
+          order_index?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          file_size?: number | null
+          id?: string
+          is_downloadable?: boolean | null
+          metadata?: Json | null
+          module_id?: string | null
+          order_index?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_content_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_content_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           category: string | null
@@ -215,9 +387,11 @@ export type Database = {
           id: string
           image_url: string | null
           instructor_id: string | null
+          is_paid: boolean | null
           level: string | null
           price: number | null
           status: string | null
+          stripe_price_id: string | null
           title: string
           updated_at: string
         }
@@ -229,9 +403,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string | null
+          is_paid?: boolean | null
           level?: string | null
           price?: number | null
           status?: string | null
+          stripe_price_id?: string | null
           title: string
           updated_at?: string
         }
@@ -243,9 +419,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string | null
+          is_paid?: boolean | null
           level?: string | null
           price?: number | null
           status?: string | null
+          stripe_price_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -448,12 +626,117 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean | null
+          reference_id: string | null
+          reference_type: string | null
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          branding: Json | null
+          created_at: string
+          domain: string | null
+          id: string
+          name: string
+          settings: Json | null
+        }
+        Insert: {
+          branding?: Json | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          name: string
+          settings?: Json | null
+        }
+        Update: {
+          branding?: Json | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          name?: string
+          settings?: Json | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number | null
+          course_id: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          status: string | null
+          stripe_session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          course_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          status?: string | null
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          course_id?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          status?: string | null
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
+          organization_id: string | null
           role: string
           updated_at: string
           user_id: string
@@ -463,6 +746,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          organization_id?: string | null
           role?: string
           updated_at?: string
           user_id: string
@@ -472,9 +756,48 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          organization_id?: string | null
           role?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_banks: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -487,6 +810,7 @@ export type Database = {
           options: Json | null
           order_index: number | null
           points: number | null
+          question_bank_id: string | null
           question_text: string
           question_type: string | null
         }
@@ -498,6 +822,7 @@ export type Database = {
           options?: Json | null
           order_index?: number | null
           points?: number | null
+          question_bank_id?: string | null
           question_text: string
           question_type?: string | null
         }
@@ -509,6 +834,7 @@ export type Database = {
           options?: Json | null
           order_index?: number | null
           points?: number | null
+          question_bank_id?: string | null
           question_text?: string
           question_type?: string | null
         }
@@ -520,6 +846,13 @@ export type Database = {
             referencedRelation: "assessments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "questions_question_bank_id_fkey"
+            columns: ["question_bank_id"]
+            isOneToOne: false
+            referencedRelation: "question_banks"
+            referencedColumns: ["id"]
+          },
         ]
       }
       virtual_classes: {
@@ -528,11 +861,14 @@ export type Database = {
           created_at: string
           description: string | null
           duration_minutes: number | null
+          external_meeting_id: string | null
           id: string
           instructor_id: string | null
           max_participants: number | null
           meeting_id: string | null
           meeting_url: string | null
+          platform: string | null
+          recording_url: string | null
           scheduled_at: string
           status: string | null
           title: string
@@ -542,11 +878,14 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
+          external_meeting_id?: string | null
           id?: string
           instructor_id?: string | null
           max_participants?: number | null
           meeting_id?: string | null
           meeting_url?: string | null
+          platform?: string | null
+          recording_url?: string | null
           scheduled_at: string
           status?: string | null
           title: string
@@ -556,11 +895,14 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
+          external_meeting_id?: string | null
           id?: string
           instructor_id?: string | null
           max_participants?: number | null
           meeting_id?: string | null
           meeting_url?: string | null
+          platform?: string | null
+          recording_url?: string | null
           scheduled_at?: string
           status?: string | null
           title?: string
