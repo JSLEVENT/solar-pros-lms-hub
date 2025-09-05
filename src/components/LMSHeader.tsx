@@ -28,8 +28,26 @@ export function LMSHeader() {
     }
   };
 
-  const userName = profile?.full_name || user?.email || 'User';
+  const userName = profile?.display_name || profile?.full_name || user?.email || 'User';
   const userRole = profile?.role || 'learner';
+
+  const getGreeting = () => {
+    const tz = profile?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try {
+      const now = new Date();
+      const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: tz }).format(now));
+      if (hour < 5) return 'Good late night';
+      if (hour < 12) return 'Good morning';
+      if (hour < 17) return 'Good afternoon';
+      if (hour < 21) return 'Good evening';
+      return 'Good night';
+    } catch {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Good morning';
+      if (hour < 17) return 'Good afternoon';
+      return 'Good evening';
+    }
+  };
   const notificationCount = 0;
 
   return (
@@ -71,7 +89,13 @@ export function LMSHeader() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">{profile?.full_name || 'User'}</span>
+                  <span className="text-xs uppercase text-muted-foreground tracking-wide">{getGreeting()}</span>
+                  <span className="text-sm font-medium">
+                    {profile?.display_name || profile?.full_name || 'User'}
+                    {profile?.job_title && (
+                      <span className="ml-2 text-xs text-muted-foreground font-normal">{profile.job_title}</span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-1">
                     {getRoleIcon(profile?.role || 'learner')}
                     <Badge variant="outline" className={cn("text-xs border-0 bg-accent/50", getRoleColor(profile?.role || 'learner'))}>

@@ -2,10 +2,31 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+// Strongly typed profile structure
+export interface Profile {
+  user_id: string;
+  full_name: string | null;
+  display_name: string | null;
+  job_title: string | null;
+  avatar_url: string | null;
+  role: string;
+  time_zone: string | null;
+  locale: string | null;
+  bio: string | null;
+  preferences: any;
+  last_active_at: string | null;
+  first_login_at: string | null;
+  last_login_at: string | null;
+  login_count: number;
+  total_learning_seconds: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: any | null;
+  profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<{ error: any }>;
@@ -33,7 +54,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -96,10 +117,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    // Track login analytics (best-effort)
+    if (!error && data?.session?.user) {
+      try {
+        await supabase.from('analytics').insert({
+          user_id: data.session.user.id,
+          event_type: 'user_login',
+          reference_type: 'auth'
+        });
+      } catch (e) {
+        console.warn('Failed to log login event', e);
+      }
+    }
     return { error };
   };
 
@@ -121,6 +154,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Optional logout event (doesn't affect profile metrics directly)
+    if (user) {
+      try { await supabase.from('analytics').insert({ user_id: user.id, event_type: 'user_logout', reference_type: 'auth' }); } catch {}
+    }
     await supabase.auth.signOut();
   };
 

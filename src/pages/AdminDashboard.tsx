@@ -165,12 +165,18 @@ export default function AdminDashboard() {
       const completedEnrollments = enrollmentsRes.data?.filter(e => e.status === 'completed').length || 0;
       const completionRate = totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0;
 
+      // Active users heuristic: last_active_at within past 7 days
+      const recentActive = (usersRes.data || []).filter((u: any) => {
+        if (!u.last_active_at) return false;
+        return new Date(u.last_active_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      }).length;
+
       setStats({
         totalUsers,
         totalCourses,
         totalEnrollments,
         totalCertificates,
-        activeUsers: totalUsers, // Simplified
+        activeUsers: recentActive,
         completionRate,
         totalTeams: teamsRes.data?.length || 0,
         totalManagers: managersRes.data?.length || 0
