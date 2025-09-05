@@ -20,7 +20,11 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
   useEffect(() => {
     if (!loading && user && profile && requiredRole) {
-      if (profile.role !== requiredRole && profile.role !== 'admin') {
+      const isAllowed =
+        profile.role === requiredRole ||
+        profile.role === 'admin' ||
+        profile.role === 'owner';
+      if (!isAllowed) {
         navigate('/');
       }
     }
@@ -38,7 +42,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     return null;
   }
 
-  if (requiredRole && profile && profile.role !== requiredRole && profile.role !== 'admin') {
+  if (requiredRole && profile && !(profile.role === requiredRole || profile.role === 'admin' || profile.role === 'owner')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

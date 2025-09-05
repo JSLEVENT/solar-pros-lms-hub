@@ -109,6 +109,7 @@ export default function AdminDashboard() {
     full_name: '',
     role: 'learner'
   });
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -410,6 +411,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const inviteUser = async () => {
+    if (!newUser.email) {
+      toast({ title: 'Error', description: 'Email is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      setInviting(true);
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: newUser.email,
+          full_name: newUser.full_name,
+          role: newUser.role
+        }
+      });
+      if (error) throw error;
+      toast({ title: 'Invitation sent', description: `Invite sent to ${newUser.email}` });
+      setNewUser({ email: '', password: '', full_name: '', role: 'learner' });
+      fetchAdminData();
+    } catch (err) {
+      console.error('Invite error', err);
+      const message = (err as any)?.message || 'Failed to send invite';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setInviting(false);
+    }
+  };
+
   if (profile?.role !== 'admin') {
     return (
       <LMSLayout>
@@ -613,7 +641,9 @@ export default function AdminDashboard() {
             <SelectItem value="owner">Owner</SelectItem>
                       </SelectContent>
                     </Select>
-          <Button className="w-full" disabled title="User invites require a server function or service key">Create User (use server)</Button>
+                    <Button className="w-full" onClick={inviteUser} disabled={inviting}>
+                      {inviting ? 'Sending invite…' : 'Send Invite'}
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>
