@@ -112,14 +112,14 @@ export default function AdminDashboard() {
   const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    if (profile?.role === 'admin') {
+    if (profile && (profile.role === 'admin' || profile.role === 'owner')) {
       fetchAdminData();
     }
   }, [profile]);
 
   // Realtime updates for live dashboard
   useEffect(() => {
-    if (profile?.role !== 'admin') return;
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'owner')) return;
     const channel = supabase
       .channel('admin-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAdminData())
