@@ -22,6 +22,7 @@ export type Database = {
           metadata: Json | null
           reference_id: string | null
           reference_type: string | null
+          team_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           metadata?: Json | null
           reference_id?: string | null
           reference_type?: string | null
+          team_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -40,9 +42,18 @@ export type Database = {
           metadata?: Json | null
           reference_id?: string | null
           reference_type?: string | null
+          team_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "analytics_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       assessment_results: {
         Row: {
@@ -315,6 +326,60 @@ export type Database = {
           },
         ]
       }
+      content_assignments: {
+        Row: {
+          assigned_by: string | null
+          assignment_type: string
+          content_id: string
+          content_type: string
+          created_at: string
+          due_date: string | null
+          id: string
+          organization_id: string | null
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          assignment_type: string
+          content_id: string
+          content_type: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          assignment_type?: string
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_assignments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_content: {
         Row: {
           content_type: string
@@ -570,6 +635,38 @@ export type Database = {
           },
         ]
       }
+      manager_teams: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          manager_id: string | null
+          team_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          manager_id?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          manager_id?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modules: {
         Row: {
           content_type: string | null
@@ -805,6 +902,76 @@ export type Database = {
           },
         ]
       }
+      team_memberships: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_memberships_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       virtual_classes: {
         Row: {
           course_id: string | null
@@ -879,7 +1046,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_manage_team: {
+        Args: { team_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      get_user_role: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      is_owner_or_admin: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "manager" | "learner"
