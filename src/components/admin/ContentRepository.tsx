@@ -30,18 +30,46 @@ export const ContentRepository = () => {
     await Promise.all([fetchFolders(), fetchAssets(), fetchTags()]);
   };
   const fetchFolders = async () => {
-    const { data } = await supabase.from('content_folders').select('*').order('name');
-    setFolders(data || []);
+    try {
+      const { data, error } = await supabase.from('content_folders').select('*').order('name');
+      if (error) throw error;
+      setFolders(data || []);
+    } catch (e: any) {
+      if (e.message?.includes('relation') || e.code === '42P01') {
+        // Table not migrated yet
+        setFolders([]);
+      } else {
+        console.error(e);
+      }
+    }
   };
   const fetchAssets = async () => {
-    const query = supabase.from('content_assets').select('*').order('created_at', { ascending: false });
-    if (selectedFolder) query.eq('folder_id', selectedFolder);
-    const { data } = await query;
-    setAssets(data || []);
+    try {
+      const query = supabase.from('content_assets').select('*').order('created_at', { ascending: false });
+      if (selectedFolder) query.eq('folder_id', selectedFolder);
+      const { data, error } = await query;
+      if (error) throw error;
+      setAssets(data || []);
+    } catch (e: any) {
+      if (e.message?.includes('relation') || e.code === '42P01') {
+        setAssets([]);
+      } else {
+        console.error(e);
+      }
+    }
   };
   const fetchTags = async () => {
-    const { data } = await supabase.from('content_tags').select('*').order('name');
-    setTags(data || []);
+    try {
+      const { data, error } = await supabase.from('content_tags').select('*').order('name');
+      if (error) throw error;
+      setTags(data || []);
+    } catch (e: any) {
+      if (e.message?.includes('relation') || e.code === '42P01') {
+        setTags([]);
+      } else {
+        console.error(e);
+      }
+    }
   };
 
   const createFolder = async () => {
@@ -114,6 +142,9 @@ export const ContentRepository = () => {
           <ModernCardTitle>Folders</ModernCardTitle>
         </ModernCardHeader>
         <ModernCardContent className="space-y-4">
+          {folders.length === 0 && (
+            <p className="text-xs text-muted-foreground">No folders or repository tables not migrated yet.</p>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button variant={selectedFolder === null ? 'default' : 'outline'} size="sm" onClick={() => { setSelectedFolder(null); fetchAssets(); }}>All</Button>
             {folders.map(f => (

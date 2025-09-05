@@ -209,15 +209,39 @@ export default function AdminDashboard() {
       })) || []);
 
       // Fetch teams with member and manager counts
-      const { data: teamsWithCounts, error: teamsWithCountsError } = await supabase
-        .from('teams')
-        .select(`
-          id, name, description, is_archived,
-          team_memberships(count),
-          manager_teams(manager_id)
-        `)
-        .order('created_at', { ascending: false });
-
+      let teamsWithCounts: any[] | null = null;
+      let teamsWithCountsError = null as any;
+      try {
+        const attempt = await supabase
+          .from('teams')
+          .select(`
+            id, name, description, is_archived,
+            team_memberships(count),
+            manager_teams(manager_id)
+          `)
+          .order('created_at', { ascending: false });
+        if (attempt.error) throw attempt.error;
+        teamsWithCounts = attempt.data;
+      } catch (err: any) {
+        // Fallback if is_archived column not yet migrated
+        if (err?.message?.includes('is_archived')) {
+          const fallback = await supabase
+            .from('teams')
+            .select(`
+              id, name, description,
+              team_memberships(count),
+              manager_teams(manager_id)
+            `)
+            .order('created_at', { ascending: false });
+          if (!fallback.error) {
+            teamsWithCounts = fallback.data;
+          } else {
+            teamsWithCountsError = fallback.error;
+          }
+        } else {
+          teamsWithCountsError = err;
+        }
+      }
       if (teamsWithCountsError) throw teamsWithCountsError;
 
       // Fetch manager profiles for display
