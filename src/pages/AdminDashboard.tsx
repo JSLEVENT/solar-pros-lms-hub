@@ -52,6 +52,7 @@ interface User {
   role: string;
   created_at: string;
   organization_id?: string;
+  is_active?: boolean;
 }
 
 interface Course {
@@ -72,6 +73,7 @@ interface TeamSummary {
   member_count: number;
   manager_count: number;
   managers: { user_id: string; full_name: string | null }[];
+  is_archived?: boolean;
 }
 
 interface TeamAnalyticsRow {
@@ -210,7 +212,7 @@ export default function AdminDashboard() {
       const { data: teamsWithCounts, error: teamsWithCountsError } = await supabase
         .from('teams')
         .select(`
-          id, name, description,
+          id, name, description, is_archived,
           team_memberships(count),
           manager_teams(manager_id)
         `)
@@ -233,6 +235,7 @@ export default function AdminDashboard() {
         id: t.id,
         name: t.name,
         description: t.description,
+        is_archived: t.is_archived,
         member_count: t.team_memberships?.[0]?.count || 0,
         manager_count: (t.manager_teams || []).length,
         managers: (t.manager_teams || []).map((mt: any) => ({
@@ -673,11 +676,21 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-medium">{user.full_name || `User ${user.user_id}`}</p>
                         <p className="text-sm text-muted-foreground">ID: {user.user_id}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {user.role}
-                        </Badge>
+                        <div className="flex gap-2 mt-1 items-center">
+                          <Badge variant="outline">{user.role}</Badge>
+                          <button
+                            onClick={async () => {
+                              const next = !(user as any).is_active;
+                              await supabase.from('profiles').update({ is_active: next }).eq('id', user.id);
+                              setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: next } as any : u));
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded border ${ (user as any).is_active ? 'bg-green-600 text-white border-green-600' : 'bg-gray-300 text-gray-700 border-gray-400'}`}
+                          >
+                            {(user as any).is_active ? 'Active' : 'Inactive'}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         <Select value={user.role} onValueChange={(value: 'owner' | 'admin' | 'manager' | 'learner') => updateUserRole(user.user_id, value)}>
                           <SelectTrigger className="w-32">
                             <SelectValue />
@@ -715,9 +728,19 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-medium">{team.name}</p>
                         <p className="text-sm text-muted-foreground">{team.description || 'No description'}</p>
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-2 mt-2 items-center">
                           <Badge className="text-xs">{team.member_count} members</Badge>
                           <Badge className="text-xs">{team.manager_count} managers</Badge>
+                          <button
+                            onClick={async () => {
+                              const next = !(team as any).is_archived;
+                              await supabase.from('teams').update({ is_archived: next }).eq('id', team.id);
+                              setTeams(prev => prev.map(t => t.id === team.id ? { ...t, is_archived: next } as any : t));
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded border ${(team as any).is_archived ? 'bg-gray-300 text-gray-700' : 'bg-amber-600 text-white border-amber-600'}`}
+                          >
+                            {(team as any).is_archived ? 'Archived' : 'Active'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -725,17 +748,19 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground mb-2">Managers</p>
                       <div className="flex flex-wrap gap-2">
                         {team.managers.map((m) => (
-                          <Badge key={m.user_id} className="flex items-center gap-2 text-xs">
-                            {m.full_name || m.user_id}
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-6 w-6 ml-1"
-                              onClick={() => removeManagerFromTeam(team.id, m.user_id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </Badge>
+                          <div key={m.user_id}>
+                            <Badge className="flex items-center gap-2 text-xs">
+                              {m.full_name || m.user_id}
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6 ml-1"
+                                onClick={() => removeManagerFromTeam(team.id, m.user_id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          </div>
                         ))}
                         {team.managers.length === 0 && (
                           <span className="text-sm text-muted-foreground">No managers assigned</span>

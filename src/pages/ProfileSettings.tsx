@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { AvatarUploader } from '@/components/AvatarUploader';
 import { useToast } from '@/hooks/use-toast';
 import { ModernCard, ModernCardContent, ModernCardHeader, ModernCardTitle } from '@/components/ui/modern-card';
 
@@ -93,6 +94,10 @@ export default function ProfileSettings() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Avatar URL</label>
                 <Input value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Avatar</label>
+                <AvatarUploader profileId={profile.id} currentUrl={form.avatar_url || profile.avatar_url} onChange={(url) => setForm(f => ({ ...f, avatar_url: url }))} />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-medium">Bio</label>
