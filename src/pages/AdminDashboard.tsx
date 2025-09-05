@@ -31,6 +31,8 @@ import {
   UserPlus,
   Layers
 } from 'lucide-react';
+import { ContentRepository } from '@/components/admin/ContentRepository';
+import { LearningPlans } from '@/components/admin/LearningPlans';
 
 interface AdminStats {
   totalUsers: number;
@@ -582,7 +584,7 @@ export default function AdminDashboard() {
 
         {/* Admin Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-16 bg-secondary/50 rounded-2xl p-2">
+          <TabsList className="grid w-full grid-cols-7 h-16 bg-secondary/50 rounded-2xl p-2">
             <TabsTrigger value="overview" className="h-12 rounded-xl text-base">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -598,6 +600,14 @@ export default function AdminDashboard() {
             <TabsTrigger value="teams" className="h-12 rounded-xl text-base">
               <Layers className="h-4 w-4 mr-2" />
               Teams
+            </TabsTrigger>
+            <TabsTrigger value="repository" className="h-12 rounded-xl text-base">
+              <FileText className="h-4 w-4 mr-2" />
+              Repository
+            </TabsTrigger>
+            <TabsTrigger value="plans" className="h-12 rounded-xl text-base">
+              <Settings className="h-4 w-4 mr-2" />
+              Plans
             </TabsTrigger>
             <TabsTrigger value="analytics" className="h-12 rounded-xl text-base">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -859,6 +869,14 @@ export default function AdminDashboard() {
                 </ModernCardContent>
               </ModernCard>
             </div>
+          </TabsContent>
+
+          <TabsContent value="repository" className="space-y-6">
+            <ContentRepository />
+          </TabsContent>
+
+          <TabsContent value="plans" className="space-y-6">
+            <LearningPlans />
           </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
