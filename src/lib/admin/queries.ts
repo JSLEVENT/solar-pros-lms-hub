@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function fetchAdminStats() {
   const [usersRes, coursesRes, enrollmentsRes, certificatesRes, teamsRes, managersRes] = await Promise.all([
-    supabase.from('profiles').select('id,last_active_at'),
+    supabase.from('profiles').select('user_id,last_active_at'),
     supabase.from('courses').select('id'),
     supabase.from('enrollments').select('id,status'),
     supabase.from('certificates').select('id'),
@@ -16,10 +16,10 @@ export async function fetchAdminStats() {
   const totalEnrollments = enrollmentsRes.data?.length || 0;
   const completed = (enrollmentsRes.data||[]).filter(e=>e.status==='completed').length;
   const completionRate = totalEnrollments ? (completed/totalEnrollments)*100 : 0;
-  const activeUsers = (usersRes.data||[]).filter(u => u.last_active_at && new Date(u.last_active_at) > new Date(Date.now()-7*24*60*60*1000)).length;
+  const activeUsers = (usersRes.data||[]).filter((u: any) => u.last_active_at && new Date(u.last_active_at) > new Date(Date.now()-7*24*60*60*1000)).length;
 
   return {
-    totalUsers: usersRes.data?.length||0,
+  totalUsers: usersRes.data?.length||0,
     totalCourses: coursesRes.data?.length||0,
     totalEnrollments,
     totalCertificates: certificatesRes.data?.length||0,
@@ -31,7 +31,8 @@ export async function fetchAdminStats() {
 }
 
 export async function fetchUsers() {
-  const { data, error } = await supabase.from('profiles').select('*').order('created_at',{ascending:false});
+  // Explicit columns to avoid selecting non-existent 'id' and reduce payload
+  const { data, error } = await supabase.from('profiles').select('user_id, full_name, role, last_active_at, is_active, created_at').order('created_at',{ascending:false});
   if (error) throw error; return data || [];
 }
 
@@ -39,8 +40,8 @@ export async function updateUserRole(user_id: string, role: string) {
   const { error } = await supabase.from('profiles').update({ role }).eq('user_id', user_id); if (error) throw error;
 }
 
-export async function toggleUserActive(id: string, next: boolean){
-  const { error } = await supabase.from('profiles').update({ is_active: next }).eq('id', id); if (error) throw error;
+export async function toggleUserActive(user_id: string, next: boolean){
+  const { error } = await supabase.from('profiles').update({ is_active: next }).eq('user_id', user_id); if (error) throw error;
 }
 
 export async function inviteUser(payload: { email:string; full_name?:string; role?:string }){

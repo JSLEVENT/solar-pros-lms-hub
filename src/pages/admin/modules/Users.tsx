@@ -26,17 +26,19 @@ export function AdminUsers(){
       {isLoading && <p className="text-sm text-muted-foreground">Loading users…</p>}
       {isError && <p className="text-sm text-red-600">Failed to load users</p>}
       <div className="space-y-3">
-        {(data||[]).map(u => (
-          <div key={u.id} className="p-4 border rounded-xl flex items-center justify-between">
+        {(data||[]).map((u: any) => (
+          <div key={u.user_id} className="p-4 border rounded-xl flex items-center justify-between">
             <div className="space-y-1">
               <p className="font-medium">{u.full_name || 'Unnamed'}</p>
               <p className="text-xs text-muted-foreground break-all">{u.user_id}</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs capitalize">{u.role}</Badge>
-                <button
-                  onClick={()=> activeMutation.mutate({ id: u.id, next: !u.is_active })}
-                  className={`text-[10px] px-2 py-0.5 rounded border ${u.is_active? 'bg-green-600 text-white border-green-600':'bg-gray-300 text-gray-700 border-gray-400'}`}
-                >{u.is_active? 'Active':'Inactive'}</button>
+                {'is_active' in u && (
+                  <button
+                    onClick={()=> activeMutation.mutate({ user_id: u.user_id, next: !u.is_active })}
+                    className={`text-[10px] px-2 py-0.5 rounded border ${u.is_active? 'bg-green-600 text-white border-green-600':'bg-gray-300 text-gray-700 border-gray-400'}`}
+                  >{u.is_active? 'Active':'Inactive'}</button>
+                )}
               </div>
             </div>
             <div className="w-40">

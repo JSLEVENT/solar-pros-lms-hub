@@ -9,7 +9,7 @@ export function useUsers(){
     onSuccess: ()=> qc.invalidateQueries({queryKey:['admin','users']})
   });
   const activeMutation = useMutation({
-    mutationFn: ({id,next}:{id:string; next:boolean}) => toggleUserActive(id,next),
+    mutationFn: ({user_id,next}:{user_id:string; next:boolean}) => toggleUserActive(user_id,next),
     onSuccess: ()=> qc.invalidateQueries({queryKey:['admin','users']})
   });
   const inviteMutation = useMutation({
