@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string;
+  requiredRole?: string | string[]; // can be single or list
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -20,13 +20,9 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
   useEffect(() => {
     if (!loading && user && profile && requiredRole) {
-      const isAllowed =
-        profile.role === requiredRole ||
-        profile.role === 'admin' ||
-        profile.role === 'owner';
-      if (!isAllowed) {
-        navigate('/');
-      }
+      const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+      const isAllowed = allowedRoles.includes(profile.role) || profile.role === 'admin' || profile.role === 'owner';
+      if (!isAllowed) navigate('/');
     }
   }, [user, profile, loading, requiredRole, navigate]);
 
@@ -42,7 +38,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     return null;
   }
 
-  if (requiredRole && profile && !(profile.role === requiredRole || profile.role === 'admin' || profile.role === 'owner')) {
+  if (requiredRole && profile) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    const isAllowed = allowedRoles.includes(profile.role) || profile.role === 'admin' || profile.role === 'owner';
+    if (!isAllowed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -51,6 +50,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         </div>
       </div>
     );
+    }
   }
 
   return <>{children}</>;

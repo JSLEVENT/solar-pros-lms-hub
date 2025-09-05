@@ -438,7 +438,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (profile?.role !== 'admin') {
+  if (profile && !(profile.role === 'admin' || profile.role === 'owner')) {
     return (
       <LMSLayout>
         <div className="flex items-center justify-center h-64">

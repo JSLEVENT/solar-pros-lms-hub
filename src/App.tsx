@@ -78,7 +78,7 @@ const App = () => (
             <Route 
               path="/admin" 
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute requiredRole={["admin", "owner"]}>
                   <AdminDashboard />
                 </ProtectedRoute>
               } 
@@ -86,7 +86,7 @@ const App = () => (
             <Route 
               path="/admin/teams" 
               element={
-                <ProtectedRoute requiredRole="manager">
+                <ProtectedRoute requiredRole={["manager", "admin", "owner"]}>
                   <LMSLayout>
                     <TeamManagement />
                   </LMSLayout>
