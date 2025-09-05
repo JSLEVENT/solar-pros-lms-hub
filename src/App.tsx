@@ -15,7 +15,9 @@ import Certificates from "./pages/Certificates";
 import Discussions from "./pages/Discussions";
 import Calendar from "./pages/Calendar";
 import VirtualClasses from "./pages/VirtualClasses";
-import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/AdminDashboard";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -101,7 +103,10 @@ const App = () => (
               } 
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+        <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="*" element={<div>Page Not Found</div>} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
