@@ -7,6 +7,14 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import MyCourses from "./pages/MyCourses";
+import CourseCatalog from "./pages/CourseCatalog";
+import Assessments from "./pages/Assessments";
+import MyProgress from "./pages/MyProgress";
+import Certificates from "./pages/Certificates";
+import Discussions from "./pages/Discussions";
+import Calendar from "./pages/Calendar";
+import VirtualClasses from "./pages/VirtualClasses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +33,70 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Index />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/courses" 
+              element={
+                <ProtectedRoute>
+                  <MyCourses />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/catalog" 
+              element={
+                <ProtectedRoute>
+                  <CourseCatalog />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/assessments" 
+              element={
+                <ProtectedRoute>
+                  <Assessments />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/progress" 
+              element={
+                <ProtectedRoute>
+                  <MyProgress />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/certificates" 
+              element={
+                <ProtectedRoute>
+                  <Certificates />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/discussions" 
+              element={
+                <ProtectedRoute>
+                  <Discussions />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/calendar" 
+              element={
+                <ProtectedRoute>
+                  <Calendar />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/virtual-classes" 
+              element={
+                <ProtectedRoute>
+                  <VirtualClasses />
                 </ProtectedRoute>
               } 
             />
