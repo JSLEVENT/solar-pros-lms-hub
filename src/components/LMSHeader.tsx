@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Bell, User, LogOut, Settings, Shield, BookOpen, ChevronDown } from "lucide-react";
+import { Link } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -109,9 +110,11 @@ export function LMSHeader() {
             <DropdownMenuContent align="end" className="w-64 card-glass border-white/10 backdrop-blur-xl">
               <DropdownMenuLabel className="font-medium">My Account</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="cursor-pointer hover:bg-accent/50 rounded-lg transition-colors">
-                <User className="h-4 w-4 mr-3" />
-                Profile
+              <DropdownMenuItem asChild className="cursor-pointer hover:bg-accent/50 rounded-lg transition-colors">
+                <Link to="/settings/profile" className="flex items-center w-full">
+                  <User className="h-4 w-4 mr-3" />
+                  Profile
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer hover:bg-accent/50 rounded-lg transition-colors">
                 <Settings className="h-4 w-4 mr-3" />

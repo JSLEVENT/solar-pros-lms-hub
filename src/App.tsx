@@ -14,6 +14,7 @@ import Calendar from "./pages/Calendar";
 import LiveTrainings from "./pages/LiveTrainings";
 import AdminDashboard from "./pages/AdminDashboard";
 import { LMSLayout } from "./components/LMSLayout";
+import ProfileSettings from './pages/ProfileSettings';
 import { TeamManagement } from "./components/TeamManagement";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,14 @@ const App = () => (
                   <AdminDashboard />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfileSettings />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/admin/teams" 

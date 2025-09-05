@@ -700,7 +700,7 @@ export default function AdminDashboard() {
           <TabsContent value="teams" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Team Management</h2>
-              <Badge variant="secondary">{stats?.totalTeams || 0} teams • {stats?.totalManagers || 0} managers</Badge>
+              <Badge className="text-xs">{stats?.totalTeams || 0} teams • {stats?.totalManagers || 0} managers</Badge>
             </div>
             <div className="flex justify-end -mt-4">
               <Button asChild variant="outline">
@@ -716,8 +716,8 @@ export default function AdminDashboard() {
                         <p className="font-medium">{team.name}</p>
                         <p className="text-sm text-muted-foreground">{team.description || 'No description'}</p>
                         <div className="flex gap-2 mt-2">
-                          <Badge variant="outline">{team.member_count} members</Badge>
-                          <Badge variant="outline">{team.manager_count} managers</Badge>
+                          <Badge className="text-xs">{team.member_count} members</Badge>
+                          <Badge className="text-xs">{team.manager_count} managers</Badge>
                         </div>
                       </div>
                     </div>
@@ -725,7 +725,7 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground mb-2">Managers</p>
                       <div className="flex flex-wrap gap-2">
                         {team.managers.map((m) => (
-                          <Badge key={m.user_id} variant="secondary" className="flex items-center gap-2">
+                          <Badge key={m.user_id} className="flex items-center gap-2 text-xs">
                             {m.full_name || m.user_id}
                             <Button
                               variant="outline"
@@ -956,6 +956,33 @@ function AssignManagerSelect({ onAssign }: { onAssign: (managerId: string) => vo
           <SelectItem key={m.user_id} value={m.user_id}>
             {m.full_name || m.user_id}
           </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// AddMemberSelect for adding learners/managers to a team
+function AddMemberSelect({ teamId, onAdd }: { teamId: string; onAdd: (userId: string) => void }) {
+  const [candidates, setCandidates] = useState<{ user_id: string; full_name: string | null; role: string }[]>([]);
+  useEffect(() => {
+    const loadCandidates = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role')
+        .in('role', ['learner','manager']);
+      setCandidates(data || []);
+    };
+    loadCandidates();
+  }, [teamId]);
+  return (
+    <Select onValueChange={(val) => onAdd(val)}>
+      <SelectTrigger>
+        <SelectValue placeholder="Add member" />
+      </SelectTrigger>
+      <SelectContent>
+        {candidates.map(c => (
+          <SelectItem key={c.user_id} value={c.user_id}>{c.full_name || c.user_id} ({c.role})</SelectItem>
         ))}
       </SelectContent>
     </Select>

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ModernCard } from '@/components/ui/modern-card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, UserPlus, Settings, Trash2 } from 'lucide-react';
+import { Plus, Users, UserPlus, Settings, Trash2, BarChart3 } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -292,9 +292,9 @@ export const TeamManagement = () => {
               </div>
               <p className="text-muted-foreground text-sm mb-4">{team.description}</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => { setSelectedTeam(team); fetchTeamMembers(team.id); }}>
                   <UserPlus className="w-4 h-4 mr-1" />
-                  Manage
+                  Open
                 </Button>
               </div>
             </div>
@@ -364,6 +364,20 @@ export const TeamManagement = () => {
                 <p className="text-muted-foreground text-center py-8">
                   No members in this team yet.
                 </p>
+              )}
+              {canManageTeams && selectedTeam && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Select onValueChange={(val) => addMemberToTeam(val)}>
+                    <SelectTrigger className="w-60">
+                      <SelectValue placeholder="Add member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.filter(u => !teamMembers.some(tm => tm.user_id === u.id)).map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.full_name} ({u.role})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
           </div>
