@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,7 @@ export const ContentRepository = () => {
   };
   const fetchFolders = async () => {
     try {
-      const { data, error } = await supabase.from('content_folders').select('*').order('name');
+  const { data, error } = await (supabase as any).from('content_folders').select('*').order('name');
       if (error) throw error;
       setFolders(data || []);
     } catch (e: any) {
@@ -46,7 +46,7 @@ export const ContentRepository = () => {
   };
   const fetchAssets = async () => {
     try {
-      const query = supabase.from('content_assets').select('*').order('created_at', { ascending: false });
+  const query = (supabase as any).from('content_assets').select('*').order('created_at', { ascending: false });
       if (selectedFolder) query.eq('folder_id', selectedFolder);
       const { data, error } = await query;
       if (error) throw error;
@@ -61,7 +61,7 @@ export const ContentRepository = () => {
   };
   const fetchTags = async () => {
     try {
-      const { data, error } = await supabase.from('content_tags').select('*').order('name');
+  const { data, error } = await (supabase as any).from('content_tags').select('*').order('name');
       if (error) throw error;
       setTags(data || []);
     } catch (e: any) {
@@ -76,7 +76,7 @@ export const ContentRepository = () => {
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
     setCreatingFolder(true);
-    const { error } = await supabase.from('content_folders').insert({ name: newFolderName, parent_id: selectedFolder });
+  const { error } = await (supabase as any).from('content_folders').insert({ name: newFolderName, parent_id: selectedFolder });
     setCreatingFolder(false);
     if (error) return toast({ title: 'Error', description: error.message, variant: 'destructive' });
     setNewFolderName('');
@@ -86,10 +86,10 @@ export const ContentRepository = () => {
   const ensureTags = async (names: string[]) => {
     if (!names.length) return [] as string[];
     const lower = names.map(n => n.toLowerCase());
-    const existing = (await supabase.from('content_tags').select('*').in('name', lower)).data || [];
+  const existing = ((await (supabase as any).from('content_tags').select('*').in('name', lower)).data) || [];
     const toCreate = lower.filter(n => !existing.find(e => e.name.toLowerCase() === n));
     if (toCreate.length) {
-      const { data: inserted } = await supabase.from('content_tags').insert(toCreate.map(name => ({ name }))).select('*');
+  const { data: inserted } = await (supabase as any).from('content_tags').insert(toCreate.map(name => ({ name }))).select('*');
       return [...existing, ...(inserted || [])].map(t => t.id);
     }
     return existing.map(t => t.id);
@@ -107,7 +107,7 @@ export const ContentRepository = () => {
         file_path = path;
       }
       const tagIds = await ensureTags(newAsset.tags);
-      const { data: inserted, error } = await supabase.from('content_assets').insert({
+  const { data: inserted, error } = await (supabase as any).from('content_assets').insert({
         title: newAsset.title,
         description: newAsset.description || null,
         external_url: newAsset.external_url || null,
@@ -117,7 +117,7 @@ export const ContentRepository = () => {
       }).select('*').single();
       if (error) throw error;
       if (inserted && tagIds.length) {
-        await supabase.from('content_asset_tags').insert(tagIds.map(id => ({ asset_id: inserted.id, tag_id: id })));
+  await (supabase as any).from('content_asset_tags').insert(tagIds.map((id: string) => ({ asset_id: inserted.id, tag_id: id })));
       }
       toast({ title: 'Asset added' });
       setNewAsset({ title: '', description: '', external_url: '', content_type: 'video', file: null, tags: [] });
@@ -131,7 +131,7 @@ export const ContentRepository = () => {
 
   const updateAsset = async () => {
     if (!editing) return;
-    const { error } = await supabase.from('content_assets').update({
+  const { error } = await (supabase as any).from('content_assets').update({
       title: editing.title,
       description: editing.description,
       external_url: editing.external_url,
@@ -143,7 +143,7 @@ export const ContentRepository = () => {
   };
 
   const deleteAsset = async (id: string) => {
-    const { error } = await supabase.from('content_assets').delete().eq('id', id);
+  const { error } = await (supabase as any).from('content_assets').delete().eq('id', id);
     if (error) return toast({ title: 'Error', description: error.message, variant: 'destructive' });
     fetchAssets();
   };
