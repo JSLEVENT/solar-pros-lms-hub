@@ -18,6 +18,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				inter: ['Inter', 'sans-serif'],
+				mono: ['JetBrains Mono', 'monospace'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -26,11 +30,13 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					hover: 'hsl(var(--primary-hover))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
+					foreground: 'hsl(var(--secondary-foreground))',
+					hover: 'hsl(var(--secondary-hover))'
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
@@ -50,18 +56,21 @@ export default {
 				},
 				card: {
 					DEFAULT: 'hsl(var(--card))',
-					foreground: 'hsl(var(--card-foreground))'
+					foreground: 'hsl(var(--card-foreground))',
+					glass: 'hsl(var(--card-glass))'
 				},
-				// Solar Pros brand colors
+				// Enhanced Solar Brand Colors
 				'solar-red': {
 					DEFAULT: 'hsl(var(--solar-red))',
 					light: 'hsl(var(--solar-red-light))',
-					dark: 'hsl(var(--solar-red-dark))'
+					dark: 'hsl(var(--solar-red-dark))',
+					glow: 'hsl(var(--solar-glow))'
 				},
 				'energy-black': 'hsl(var(--energy-black))',
 				'carbon-grey': 'hsl(var(--carbon-grey))',
 				'panel-grey': 'hsl(var(--panel-grey))',
 				'steel-grey': 'hsl(var(--steel-grey))',
+				'glass-white': 'hsl(var(--glass-white))',
 				success: {
 					DEFAULT: 'hsl(var(--success))',
 					foreground: 'hsl(var(--success-foreground))'
@@ -80,6 +89,28 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-glass': 'var(--gradient-glass)',
+				'gradient-solar': 'var(--gradient-solar)',
+				'gradient-surface': 'var(--gradient-surface)'
+			},
+			boxShadow: {
+				'glass': 'var(--shadow-glass)',
+				'floating': 'var(--shadow-floating)',
+				'soft': 'var(--shadow-soft)',
+				'medium': 'var(--shadow-medium)',
+				'large': 'var(--shadow-large)',
+				'glow': 'var(--shadow-glow)'
+			},
+			backdropBlur: {
+				'xs': '2px',
+			},
+			transitionProperty: {
+				'all': 'all',
+				'colors': 'color, background-color, border-color, text-decoration-color, fill, stroke',
+				'transform': 'transform',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

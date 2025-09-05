@@ -118,38 +118,84 @@ export function LMSNavigation({ userRole, currentPath, className }: LMSNavigatio
     item.roles.includes(userRole)
   );
 
+  // Group navigation items
+  const mainItems = filteredItems.filter(item => !item.href.startsWith('/admin'));
+  const adminItems = filteredItems.filter(item => item.href.startsWith('/admin'));
+
   return (
-    <nav className={cn("flex flex-col space-y-1 p-4", className)}>
-      <div className="space-y-1">
-        {filteredItems.map((item) => {
+    <nav className={cn("flex flex-col h-full p-4", className)}>
+      {/* User Role Indicator */}
+      <div className="mb-6 p-3 rounded-xl bg-accent/20 border border-accent/30">
+        <p className="text-xs text-muted-foreground mb-1">Logged in as</p>
+        <p className="text-sm font-medium capitalize">{userRole}</p>
+      </div>
+
+      {/* Main Navigation */}
+      <div className="space-y-2 flex-1">
+        {mainItems.map((item) => {
           const isActive = currentPath === item.href || 
             (item.href !== "/" && currentPath.startsWith(item.href));
           
           return (
-            <Button
+            <a
               key={item.href}
-              variant={isActive ? "default" : "ghost"}
+              href={item.href}
               className={cn(
-                "w-full justify-start gap-3 h-10",
-                isActive 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "hover:bg-secondary"
+                "nav-item group",
+                isActive && "active"
               )}
-              asChild
             >
-              <a href={item.href}>
-                <item.icon className="h-4 w-4" />
-                <span className="flex-1 text-left">{item.title}</span>
-                {item.badge && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
-              </a>
-            </Button>
+              <div className="relative p-1 rounded-lg">
+                <item.icon className="h-5 w-5 transition-colors" />
+              </div>
+              <span className="flex-1 font-medium">{item.title}</span>
+              {item.badge && (
+                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs px-2 py-0.5">
+                  {item.badge}
+                </Badge>
+              )}
+            </a>
           );
         })}
       </div>
+
+      {/* Admin Section */}
+      {adminItems.length > 0 && (
+        <div className="mt-6 pt-6 border-t border-border/50">
+          <div className="mb-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Administration
+            </p>
+          </div>
+          <div className="space-y-2">
+            {adminItems.map((item) => {
+              const isActive = currentPath === item.href || 
+                (item.href !== "/" && currentPath.startsWith(item.href));
+              
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "nav-item group",
+                    isActive && "active"
+                  )}
+                >
+                  <div className="relative p-1 rounded-lg">
+                    <item.icon className="h-5 w-5 transition-colors" />
+                  </div>
+                  <span className="flex-1 font-medium">{item.title}</span>
+                  {item.badge && (
+                    <Badge className="bg-primary/10 text-primary border-primary/20 text-xs px-2 py-0.5">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

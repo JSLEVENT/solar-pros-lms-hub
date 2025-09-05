@@ -133,130 +133,146 @@ const Index = () => {
 
   return (
     <LMSLayout>
-      <div className="space-y-8">
-        {/* Welcome Section */}
-        <DashboardWelcome 
-          userName={currentUser.name}
-          userRole={currentUser.role}
-          recentActivity={recentActivity}
-        />
+      <div className="space-y-8 animate-fade-in">
+        {/* Modern Welcome Section */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-solar opacity-30 rounded-3xl" />
+          <DashboardWelcome 
+            userName={currentUser.name}
+            userRole={currentUser.role}
+            recentActivity={recentActivity}
+          />
+        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Content Area */}
           <div className="xl:col-span-2 space-y-8">
-            {/* Progress Overview */}
-            <ProgressStats stats={progressStats} />
+            {/* Enhanced Progress Overview */}
+            <div className="relative">
+              <ProgressStats stats={progressStats} />
+            </div>
 
-            {/* My Courses */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">My Courses</h2>
-                <Button variant="outline" asChild>
-                  <a href="/courses">View All</a>
+            {/* Modern My Courses Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-gradient">My Courses</h2>
+                  <p className="text-muted-foreground mt-1">Continue your learning journey</p>
+                </div>
+                <Button variant="outline" className="btn-glass" asChild>
+                  <a href="/courses">View All Courses</a>
                 </Button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {enrolledCourses.slice(0, 2).map((course) => (
-                  <CourseCard 
-                    key={course.id} 
-                    course={course} 
-                    variant="enrolled"
-                  />
+                  <div key={course.id} className="interactive-card">
+                    <CourseCard 
+                      course={course} 
+                      variant="enrolled"
+                    />
+                  </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Modern Sidebar */}
           <div className="space-y-6">
-            {/* Upcoming Events */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+            {/* Elegant Upcoming Events */}
+            <div className="card-glass border-white/10 rounded-2xl overflow-hidden">
+              <div className="p-6 border-b border-white/10">
+                <h3 className="font-semibold text-lg flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Calendar className="h-5 w-5 text-primary" />
+                  </div>
                   Upcoming Events
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
                 {upcomingEvents.map((event, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                  <div key={index} className="flex items-start gap-4 p-4 rounded-xl bg-accent/20 hover:bg-accent/30 transition-colors">
+                    <div className="w-3 h-3 rounded-full bg-gradient-primary mt-2 shadow-glow" />
                     <div className="flex-1">
-                      <h4 className="font-medium text-sm">{event.title}</h4>
-                      <p className="text-xs text-muted-foreground">{event.time}</p>
+                      <h4 className="font-medium text-sm leading-relaxed">{event.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">{event.time}</p>
                       {event.attendees && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Users className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{event.attendees} attending</span>
+                        <div className="flex items-center gap-1 mt-2">
+                          <Users className="h-3 w-3 text-primary" />
+                          <span className="text-xs text-primary font-medium">{event.attendees} attending</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Recent Discussions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
+            {/* Enhanced Recent Discussions */}
+            <div className="card-glass border-white/10 rounded-2xl overflow-hidden">
+              <div className="p-6 border-b border-white/10">
+                <h3 className="font-semibold text-lg flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
                   Recent Discussions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
                 {recentDiscussions.map((discussion, index) => (
-                  <div key={index} className="space-y-2">
-                    <h4 className="font-medium text-sm leading-tight">{discussion.title}</h4>
+                  <div key={index} className="space-y-3 p-4 rounded-xl hover:bg-accent/20 transition-colors cursor-pointer">
+                    <h4 className="font-medium text-sm leading-relaxed">{discussion.title}</h4>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>by {discussion.author}</span>
+                      <span className="font-medium">by {discussion.author}</span>
                       <div className="flex items-center gap-2">
                         <span>{discussion.replies} replies</span>
                         <span>•</span>
                         <span>{discussion.time}</span>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs bg-accent/50 border-accent">
                       {discussion.course}
                     </Badge>
                   </div>
                 ))}
-                <Button variant="outline" size="sm" className="w-full mt-4" asChild>
+                <Button variant="outline" size="sm" className="w-full mt-4 btn-glass" asChild>
                   <a href="/forums">View All Discussions</a>
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Performance Insights */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+            {/* Modern Performance Insights */}
+            <div className="card-glass border-white/10 rounded-2xl overflow-hidden">
+              <div className="p-6 border-b border-white/10">
+                <h3 className="font-semibold text-lg flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-success/10">
+                    <TrendingUp className="h-5 w-5 text-success" />
+                  </div>
                   This Week's Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h3>
+              </div>
+              <div className="p-6">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Study Time</span>
-                    <span className="font-medium">8.5 hrs</span>
+                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                    <span className="text-sm font-medium">Study Time</span>
+                    <span className="font-bold text-primary">8.5 hrs</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Modules Completed</span>
-                    <span className="font-medium">12</span>
+                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                    <span className="text-sm font-medium">Modules Completed</span>
+                    <span className="font-bold text-primary">12</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Quiz Scores</span>
-                    <span className="font-medium">92% avg</span>
+                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                    <span className="text-sm font-medium">Quiz Scores</span>
+                    <span className="font-bold text-success">92% avg</span>
                   </div>
-                  <div className="pt-2 border-t">
-                    <Badge className="w-full justify-center bg-success text-success-foreground">
-                      🎉 Excellent Progress!
-                    </Badge>
+                  <div className="pt-4 border-t border-white/10">
+                    <div className="p-4 rounded-xl bg-gradient-primary text-white text-center">
+                      <span className="text-2xl">🎉</span>
+                      <p className="font-medium mt-2">Excellent Progress!</p>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>

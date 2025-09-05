@@ -17,24 +17,24 @@ export function LMSLayout({ children }: LMSLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-surface">
       <LMSHeader />
       
       <div className="flex">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div 
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden" 
+            className="fixed inset-0 z-40 bg-energy-black/30 backdrop-blur-sm lg:hidden animate-fade-in" 
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
+        {/* Modern Floating Sidebar */}
         <aside className={cn(
-          "fixed top-16 left-0 z-50 h-[calc(100vh-4rem)] w-64 transform border-r bg-card/50 backdrop-blur transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed top-20 left-4 z-50 h-[calc(100vh-6rem)] w-64 transform card-glass border-white/10 rounded-2xl transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:z-auto lg:top-0 lg:left-0 lg:h-[calc(100vh-4rem)] lg:rounded-none lg:border-r lg:border-l-0 lg:border-t-0 lg:border-b-0",
+          sidebarOpen ? "translate-x-0 scale-100 opacity-100" : "-translate-x-full scale-95 opacity-0 lg:scale-100 lg:opacity-100"
         )}>
-          <div className="h-full overflow-y-auto">
+          <div className="h-full overflow-y-auto p-2">
             <LMSNavigation 
               userRole={userRole} 
               currentPath={currentPath}
@@ -44,21 +44,23 @@ export function LMSLayout({ children }: LMSLayoutProps) {
 
         {/* Main Content */}
         <main className="flex-1 lg:ml-0">
-          {/* Mobile Menu Button */}
+          {/* Floating Mobile Menu Button */}
           <div className="lg:hidden">
             <Button
               variant="ghost"
               size="sm"
-              className="fixed top-20 left-4 z-40"
+              className="fixed top-20 left-4 z-40 card-glass border-white/20 rounded-full w-10 h-10 p-0 backdrop-blur-xl"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <Menu className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Content Area */}
-          <div className="p-6 lg:p-8">
-            {children}
+          {/* Modern Content Container */}
+          <div className="p-6 lg:p-8 lg:pl-6 animate-fade-in">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
           </div>
         </main>
       </div>

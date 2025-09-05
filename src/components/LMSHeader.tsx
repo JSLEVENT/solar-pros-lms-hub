@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Bell, User, LogOut, Settings, Shield, BookOpen } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Bell, User, LogOut, Settings, Shield, BookOpen, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export function LMSHeader() {
   const { user, profile, signOut } = useAuth();
@@ -32,68 +33,74 @@ export function LMSHeader() {
   const notificationCount = 0;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo and Brand */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <div className="h-4 w-4 bg-primary-foreground rounded-sm" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Solar Pros</h1>
-              <p className="text-xs text-muted-foreground -mt-1">LMS Hub</p>
-            </div>
-          </div>
+    <header className="h-16 card-glass border-b border-white/10 flex items-center justify-between px-6 sticky top-0 z-50 backdrop-blur-xl">
+      {/* Modern Logo */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-gradient-primary rounded-xl flex items-center justify-center shadow-glow">
+          <span className="text-white font-bold text-sm">SP</span>
         </div>
+        <div className="flex flex-col">
+          <span className="font-semibold text-lg text-gradient">Solar Pros</span>
+          <span className="text-xs text-muted-foreground -mt-1">LMS Hub</span>
+        </div>
+      </div>
 
-        {/* User Actions */}
-        <div className="flex items-center gap-4">
-          {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
+      {/* Right Side */}
+      <div className="flex items-center gap-3">
+        {/* Modern Notifications */}
+        <div className="relative">
+          <Button variant="ghost" size="sm" className="relative rounded-xl btn-glass">
             <Bell className="h-4 w-4" />
             {notificationCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-gradient-primary border-0 shadow-glow">
                 {notificationCount}
               </Badge>
             )}
           </Button>
+        </div>
 
-          {/* User Menu */}
+        {/* Enhanced User Menu */}
+        {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-auto gap-2 px-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="" alt={userName} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {userName.charAt(0).toUpperCase()}
+              <Button variant="ghost" className="flex items-center gap-3 h-auto p-3 rounded-xl btn-glass">
+                <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="bg-gradient-primary text-white font-medium">
+                    {profile?.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col items-start text-left">
-                  <p className="text-sm font-medium leading-none">{userName}</p>
-                  <Badge variant="outline" className={`mt-1 text-xs ${getRoleColor(userRole)} flex items-center gap-1`}>
-                    {getRoleIcon(userRole)}
-                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                  </Badge>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-medium">{profile?.full_name || 'User'}</span>
+                  <div className="flex items-center gap-1">
+                    {getRoleIcon(profile?.role || 'learner')}
+                    <Badge variant="outline" className={cn("text-xs border-0 bg-accent/50", getRoleColor(profile?.role || 'learner'))}>
+                      {profile?.role || 'learner'}
+                    </Badge>
+                  </div>
                 </div>
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+            <DropdownMenuContent align="end" className="w-64 card-glass border-white/10 backdrop-blur-xl">
+              <DropdownMenuLabel className="font-medium">My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem className="cursor-pointer hover:bg-accent/50 rounded-lg transition-colors">
+                <User className="h-4 w-4 mr-3" />
+                Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+              <DropdownMenuItem className="cursor-pointer hover:bg-accent/50 rounded-lg transition-colors">
+                <Settings className="h-4 w-4 mr-3" />
+                Settings
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer hover:bg-destructive/10 text-destructive rounded-lg transition-colors">
+                <LogOut className="h-4 w-4 mr-3" />
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        )}
       </div>
     </header>
   );
