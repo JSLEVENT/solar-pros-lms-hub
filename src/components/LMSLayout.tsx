@@ -4,31 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LMSLayoutProps {
   children: React.ReactNode;
-  userRole: 'learner' | 'instructor' | 'admin';
-  userName: string;
-  currentPath: string;
-  notificationCount?: number;
 }
 
-export function LMSLayout({ 
-  children, 
-  userRole, 
-  userName, 
-  currentPath, 
-  notificationCount 
-}: LMSLayoutProps) {
+export function LMSLayout({ children }: LMSLayoutProps) {
+  const { profile } = useAuth();
+  const userRole = profile?.role || 'learner';
+  const currentPath = window.location.pathname;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
-      <LMSHeader 
-        userRole={userRole} 
-        userName={userName} 
-        notificationCount={notificationCount} 
-      />
+      <LMSHeader />
       
       <div className="flex">
         {/* Mobile Sidebar Overlay */}

@@ -132,12 +132,7 @@ const Index = () => {
   ];
 
   return (
-    <LMSLayout 
-      userRole={currentUser.role}
-      userName={currentUser.name}
-      currentPath="/"
-      notificationCount={currentUser.notificationCount}
-    >
+    <LMSLayout>
       <div className="space-y-8">
         {/* Welcome Section */}
         <DashboardWelcome 

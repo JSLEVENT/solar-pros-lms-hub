@@ -3,14 +3,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Bell, User, LogOut, Settings, Shield, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
-interface LMSHeaderProps {
-  userRole: 'learner' | 'instructor' | 'admin';
-  userName: string;
-  notificationCount?: number;
-}
+export function LMSHeader() {
+  const { user, profile, signOut } = useAuth();
 
-export function LMSHeader({ userRole, userName, notificationCount = 0 }: LMSHeaderProps) {
+  const handleSignOut = async () => {
+    await signOut();
+  };
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin': return 'bg-primary text-primary-foreground';
@@ -26,6 +26,10 @@ export function LMSHeader({ userRole, userName, notificationCount = 0 }: LMSHead
       default: return <User className="h-3 w-3" />;
     }
   };
+
+  const userName = profile?.full_name || user?.email || 'User';
+  const userRole = profile?.role || 'learner';
+  const notificationCount = 0;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -83,7 +87,7 @@ export function LMSHeader({ userRole, userName, notificationCount = 0 }: LMSHead
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
