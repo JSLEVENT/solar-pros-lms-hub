@@ -50,6 +50,13 @@ export type Database = {
             foreignKeyName: "analytics_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "team_analytics"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "analytics_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -375,6 +382,13 @@ export type Database = {
             foreignKeyName: "content_assignments_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "team_analytics"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "content_assignments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -662,6 +676,13 @@ export type Database = {
             foreignKeyName: "manager_teams_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "team_analytics"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "manager_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -929,6 +950,13 @@ export type Database = {
             foreignKeyName: "team_memberships_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
+            referencedRelation: "team_analytics"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "team_memberships_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
@@ -1043,7 +1071,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_analytics: {
+        Row: {
+          avg_progress: number | null
+          completed_courses: number | null
+          member_count: number | null
+          team_id: string | null
+          team_name: string | null
+          total_courses_assigned: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_manage_team: {
