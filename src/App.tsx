@@ -16,17 +16,19 @@ import AdminIndex from "./pages/admin";
 import { LMSLayout } from "./components/LMSLayout";
 import ProfileSettings from './pages/ProfileSettings';
 import { TeamManagement } from "./components/TeamManagement";
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route 
               path="/" 
@@ -102,10 +104,11 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route path="*" element={<div>Page Not Found</div>} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              <Route path="*" element={<div>Page Not Found</div>} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

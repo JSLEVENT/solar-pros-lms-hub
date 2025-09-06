@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export function TopBar() {
   const { profile } = useAuth();
@@ -10,6 +11,7 @@ export function TopBar() {
         <span>Admin Console</span>
       </div>
       <div className="flex items-center gap-4">
+  <ThemeToggle />
         {profile && (
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium">{profile.full_name || 'User'}</span>
