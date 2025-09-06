@@ -36,7 +36,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route 
               path="/" 
-            element={<div>Loading...</div>}
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/my-training" 

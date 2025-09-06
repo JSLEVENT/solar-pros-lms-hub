@@ -1,0 +1,1 @@
+Index-working.tsx was removed as a duplicate of Index.tsx to prevent confusion and potential routing ambiguity.
