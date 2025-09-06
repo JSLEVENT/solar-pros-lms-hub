@@ -1,11 +1,7 @@
 import { LMSLayout } from "@/components/LMSLayout";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
-import { CourseCard } from "@/components/CourseCard";
 import { ProgressStats } from "@/components/ProgressStats";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-new";
-import { Button } from "@/components/ui/button-new";
-import { Badge } from "@/components/ui/badge-new";
-import { Calendar, MessageSquare, Clock, Users, TrendingUp } from "lucide-react";
+import { Calendar, MessageSquare, Users, TrendingUp } from "lucide-react";
 import { useUserEnrollments } from "@/hooks/useUserEnrollments";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
@@ -25,7 +21,7 @@ const Index = () => {
   const currentUser = {
     name: profile?.full_name || "User",
     role: profile?.role || "learner" as const,
-    notificationCount: 3 // This could be fetched from notifications table
+    notificationCount: 3
   };
 
   // Calculate recent activity from real data
@@ -88,34 +84,49 @@ const Index = () => {
                   <h2 className="text-3xl font-bold text-gradient">My Courses</h2>
                   <p className="text-muted-foreground mt-1">Continue your learning journey</p>
                 </div>
-                <Button variant="outline" className="btn-glass" asChild>
-                  <a href="/courses">View All Courses</a>
-                </Button>
+                <a 
+                  href="/courses" 
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 btn-glass"
+                >
+                  View All Courses
+                </a>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {enrolledCourses && enrolledCourses.length > 0 ? (
                   enrolledCourses.slice(0, 2).map((course) => (
-                    <div key={course.id} className="interactive-card">
-                      <CourseCard 
-                        course={{
-                          ...course,
-                          instructor: course.instructor_name || 'Unknown Instructor',
-                          instructorAvatar: '',
-                          enrolled: 0, // Not available in current schema
-                          rating: 4.5, // Default rating
-                          level: (course.level as "Beginner" | "Intermediate" | "Advanced") || "Beginner",
-                          price: 0
-                        }} 
-                        variant="enrolled"
-                      />
+                    <div key={course.id} className="interactive-card rounded-xl border bg-card text-card-foreground shadow p-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between">
+                          <h3 className="font-semibold text-lg leading-tight">{course.title}</h3>
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold level-${course.level?.toLowerCase() || 'beginner'}`}>
+                            {course.level || 'Beginner'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {course.description}
+                        </p>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">by {course.instructor_name}</span>
+                          <span className="font-medium">{course.progress}% complete</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${course.progress}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
                   <div className="col-span-2 text-center py-12">
                     <p className="text-muted-foreground">No enrolled courses yet.</p>
-                    <Button variant="outline" className="mt-4" asChild>
-                      <a href="/courses">Browse Courses</a>
-                    </Button>
+                    <a 
+                      href="/courses"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 mt-4"
+                    >
+                      Browse Courses
+                    </a>
                   </div>
                 )}
               </div>
@@ -149,9 +160,9 @@ const Index = () => {
                           </div>
                         )}
                         {event.course && (
-                          <Badge variant="outline" className="text-xs mt-2 bg-accent/50 border-accent">
+                          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground bg-accent/50 border-accent mt-2">
                             {event.course}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </div>
@@ -187,9 +198,9 @@ const Index = () => {
                           <span>{discussion.time}</span>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs bg-accent/50 border-accent">
+                      <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground bg-accent/50 border-accent">
                         {discussion.course}
-                      </Badge>
+                      </span>
                     </div>
                   ))
                 ) : (
@@ -197,9 +208,12 @@ const Index = () => {
                     <p className="text-muted-foreground text-sm">No recent discussions</p>
                   </div>
                 )}
-                <Button variant="outline" size="sm" className="w-full mt-4 btn-glass" asChild>
-                  <a href="/forums">View All Discussions</a>
-                </Button>
+                <a 
+                  href="/forums" 
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs w-full mt-4 btn-glass"
+                >
+                  View All Discussions
+                </a>
               </div>
             </div>
 
