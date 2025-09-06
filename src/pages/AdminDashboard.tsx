@@ -708,8 +708,8 @@ export default function AdminDashboard() {
                             onClick={async () => {
                               const next = !(user as any).is_active;
                               // @ts-ignore is_active not in generated types yet
-                              await supabase.from('profiles').update({ is_active: next } as any).eq('id', user.id);
-                              setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: next } as any : u));
+                              await supabase.from('profiles').update({ is_active: next } as any).eq('user_id', user.user_id);
+                              setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, is_active: next } as any : u));
                             }}
                             className={`text-xs px-2 py-0.5 rounded border ${ (user as any).is_active ? 'bg-green-600 text-white border-green-600' : 'bg-gray-300 text-gray-700 border-gray-400'}`}
                           >
