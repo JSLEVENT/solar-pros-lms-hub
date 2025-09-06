@@ -333,6 +333,48 @@ export type Database = {
           },
         ]
       }
+      content_assets: {
+        Row: {
+          content_type: string
+          content_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          file_size: number | null
+          id: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_type: string
+          content_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          file_size?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          file_size?: number | null
+          id?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       content_assignments: {
         Row: {
           assigned_by: string | null
@@ -648,6 +690,88 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      learning_plan_items: {
+        Row: {
+          asset_id: string | null
+          course_id: string | null
+          created_at: string
+          id: string
+          item_type: string
+          learning_plan_id: string
+          position: number
+        }
+        Insert: {
+          asset_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          item_type: string
+          learning_plan_id: string
+          position?: number
+        }
+        Update: {
+          asset_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          item_type?: string
+          learning_plan_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_plan_items_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "content_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_plan_items_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_plan_items_learning_plan_id_fkey"
+            columns: ["learning_plan_id"]
+            isOneToOne: false
+            referencedRelation: "learning_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       manager_teams: {
         Row: {

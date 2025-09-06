@@ -36,9 +36,9 @@ export function CourseCard({ course, variant = 'catalog' }: CourseCardProps) {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'Advanced': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'Beginner': return 'level-beginner';
+      case 'Intermediate': return 'level-intermediate';
+      case 'Advanced': return 'level-advanced';
       default: return 'bg-secondary text-secondary-foreground';
     }
   };

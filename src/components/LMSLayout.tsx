@@ -12,7 +12,7 @@ interface LMSLayoutProps {
 
 export function LMSLayout({ children }: LMSLayoutProps) {
   const { profile } = useAuth();
-  const userRole = profile?.role || 'learner';
+  const userRole = (profile?.role as "owner" | "admin" | "manager" | "learner") || 'learner';
   const currentPath = window.location.pathname;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 

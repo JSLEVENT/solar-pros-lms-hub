@@ -6,130 +6,50 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MessageSquare, Clock, Users, TrendingUp } from "lucide-react";
+import { useUserEnrollments } from "@/hooks/useUserEnrollments";
+import { useUserProgress } from "@/hooks/useUserProgress";
+import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
+import { useRecentDiscussions } from "@/hooks/useRecentDiscussions";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
-  // Mock user data - in real app this would come from authentication/database
+  const { profile } = useAuth();
+  
+  // Real database integrations
+  const { data: enrolledCourses, isLoading: coursesLoading } = useUserEnrollments();
+  const { data: progressStats, isLoading: progressLoading } = useUserProgress();
+  const { data: upcomingEvents, isLoading: eventsLoading } = useUpcomingEvents();
+  const { data: recentDiscussions, isLoading: discussionsLoading } = useRecentDiscussions();
+
+  // User data from auth
   const currentUser = {
-    name: "Alex Rodriguez",
-    role: "learner" as const,
-    notificationCount: 3
+    name: profile?.full_name || "User",
+    role: profile?.role || "learner" as const,
+    notificationCount: 3 // This could be fetched from notifications table
   };
 
-  // Mock recent activity data
+  // Calculate recent activity from real data
   const recentActivity = {
-    coursesInProgress: 3,
-    upcomingDeadlines: 2,
-    newCertificates: 1,
-    studyStreak: 7
+    coursesInProgress: enrolledCourses?.filter(c => c.status === 'active').length || 0,
+    upcomingDeadlines: upcomingEvents?.filter(e => e.type === 'deadline').length || 0,
+    newCertificates: progressStats?.certificates || 0,
+    studyStreak: progressStats?.streak || 0
   };
 
-  // Mock progress stats
-  const progressStats = {
-    coursesEnrolled: 5,
-    coursesCompleted: 2,
-    totalProgress: 68,
-    weeklyProgress: 12,
-    certificates: 2,
-    studyTime: "24h",
-    streak: 7,
-    upcomingDeadlines: 2
-  };
-
-  // Mock course data
-  const enrolledCourses = [
-    {
-      id: "1",
-      title: "Solar PV System Design Fundamentals",
-      description: "Learn the essential principles of photovoltaic system design, including component selection and energy calculations.",
-      instructor: "Dr. Sarah Chen",
-      instructorAvatar: "",
-      category: "Solar Design",
-      duration: "8 weeks",
-      enrolled: 1247,
-      rating: 4.8,
-      progress: 75,
-      status: "in-progress" as const,
-      level: "Intermediate" as const,
-      price: 299
-    },
-    {
-      id: "2",
-      title: "Electrical Safety for Solar Installers",
-      description: "Critical safety protocols and best practices for working with solar electrical systems.",
-      instructor: "Mike Thompson",
-      instructorAvatar: "",
-      category: "Safety & Compliance",
-      duration: "4 weeks",
-      enrolled: 2156,
-      rating: 4.9,
-      progress: 100,
-      status: "completed" as const,
-      level: "Beginner" as const,
-      price: 199
-    },
-    {
-      id: "3",
-      title: "Advanced Grid-Tie Inverter Systems",
-      description: "Deep dive into grid-tie inverter technology, monitoring, and troubleshooting techniques.",
-      instructor: "Jennifer Davis",
-      instructorAvatar: "",
-      category: "Power Electronics",
-      duration: "6 weeks",
-      enrolled: 876,
-      rating: 4.7,
-      progress: 25,
-      status: "in-progress" as const,
-      level: "Advanced" as const,
-      price: 399
-    }
-  ];
-
-  // Mock upcoming events
-  const upcomingEvents = [
-    {
-      title: "Virtual Lab: PV System Sizing",
-      time: "Today, 2:00 PM",
-      type: "webinar",
-      attendees: 45
-    },
-    {
-      title: "Assignment Due: Safety Assessment",
-      time: "Tomorrow, 11:59 PM",
-      type: "deadline",
-      course: "Electrical Safety"
-    },
-    {
-      title: "Live Q&A with Industry Expert",
-      time: "Friday, 1:00 PM",
-      type: "event",
-      attendees: 120
-    }
-  ];
-
-  // Mock recent discussions
-  const recentDiscussions = [
-    {
-      title: "Best practices for mounting systems on tile roofs?",
-      author: "Emma Wilson",
-      replies: 12,
-      time: "2 hours ago",
-      course: "Installation Techniques"
-    },
-    {
-      title: "New inverter technology discussion",
-      author: "Carlos Mendoza", 
-      replies: 8,
-      time: "4 hours ago",
-      course: "Power Electronics"
-    },
-    {
-      title: "Code compliance questions for commercial projects",
-      author: "Rachel Kim",
-      replies: 15,
-      time: "6 hours ago",
-      course: "Commercial Solar"
-    }
-  ];
+  // Show loading state
+  if (coursesLoading || progressLoading) {
+    return (
+      <LMSLayout>
+        <div className="space-y-8 animate-fade-in">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-32 rounded-xl bg-gradient-to-r from-muted via-muted/80 to-muted animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </LMSLayout>
+    );
+  }
 
   return (
     <LMSLayout>
@@ -149,7 +69,16 @@ const Index = () => {
           <div className="xl:col-span-2 space-y-8">
             {/* Enhanced Progress Overview */}
             <div className="relative">
-              <ProgressStats stats={progressStats} />
+              <ProgressStats stats={progressStats || {
+                coursesEnrolled: 0,
+                coursesCompleted: 0,
+                totalProgress: 0,
+                weeklyProgress: 0,
+                certificates: 0,
+                studyTime: "0h",
+                streak: 0,
+                upcomingDeadlines: 0
+              }} />
             </div>
 
             {/* Modern My Courses Section */}
@@ -164,14 +93,31 @@ const Index = () => {
                 </Button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {enrolledCourses.slice(0, 2).map((course) => (
-                  <div key={course.id} className="interactive-card">
-                    <CourseCard 
-                      course={course} 
-                      variant="enrolled"
-                    />
+                {enrolledCourses && enrolledCourses.length > 0 ? (
+                  enrolledCourses.slice(0, 2).map((course) => (
+                    <div key={course.id} className="interactive-card">
+                      <CourseCard 
+                        course={{
+                          ...course,
+                          instructor: course.instructor_name || 'Unknown Instructor',
+                          instructorAvatar: '',
+                          enrolled: 0, // Not available in current schema
+                          rating: 4.5, // Default rating
+                          level: (course.level as "Beginner" | "Intermediate" | "Advanced") || "Beginner",
+                          price: 0
+                        }} 
+                        variant="enrolled"
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-12">
+                    <p className="text-muted-foreground">No enrolled courses yet.</p>
+                    <Button variant="outline" className="mt-4" asChild>
+                      <a href="/courses">Browse Courses</a>
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -189,21 +135,32 @@ const Index = () => {
                 </h3>
               </div>
               <div className="p-6 space-y-4">
-                {upcomingEvents.map((event, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 rounded-xl bg-accent/20 hover:bg-accent/30 transition-colors">
-                    <div className="w-3 h-3 rounded-full bg-gradient-primary mt-2 shadow-glow" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm leading-relaxed">{event.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{event.time}</p>
-                      {event.attendees && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <Users className="h-3 w-3 text-primary" />
-                          <span className="text-xs text-primary font-medium">{event.attendees} attending</span>
-                        </div>
-                      )}
+                {upcomingEvents && upcomingEvents.length > 0 ? (
+                  upcomingEvents.map((event) => (
+                    <div key={event.id} className="flex items-start gap-4 p-4 rounded-xl bg-accent/20 hover:bg-accent/30 transition-colors">
+                      <div className="w-3 h-3 rounded-full bg-gradient-primary mt-2 shadow-glow" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm leading-relaxed">{event.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">{event.time}</p>
+                        {event.attendees && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <Users className="h-3 w-3 text-primary" />
+                            <span className="text-xs text-primary font-medium">{event.attendees} attending</span>
+                          </div>
+                        )}
+                        {event.course && (
+                          <Badge variant="outline" className="text-xs mt-2 bg-accent/50 border-accent">
+                            {event.course}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground text-sm">No upcoming events</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -218,22 +175,28 @@ const Index = () => {
                 </h3>
               </div>
               <div className="p-6 space-y-4">
-                {recentDiscussions.map((discussion, index) => (
-                  <div key={index} className="space-y-3 p-4 rounded-xl hover:bg-accent/20 transition-colors cursor-pointer">
-                    <h4 className="font-medium text-sm leading-relaxed">{discussion.title}</h4>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium">by {discussion.author}</span>
-                      <div className="flex items-center gap-2">
-                        <span>{discussion.replies} replies</span>
-                        <span>•</span>
-                        <span>{discussion.time}</span>
+                {recentDiscussions && recentDiscussions.length > 0 ? (
+                  recentDiscussions.map((discussion) => (
+                    <div key={discussion.id} className="space-y-3 p-4 rounded-xl hover:bg-accent/20 transition-colors cursor-pointer">
+                      <h4 className="font-medium text-sm leading-relaxed">{discussion.title}</h4>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="font-medium">by {discussion.author}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{discussion.replies} replies</span>
+                          <span>•</span>
+                          <span>{discussion.time}</span>
+                        </div>
                       </div>
+                      <Badge variant="outline" className="text-xs bg-accent/50 border-accent">
+                        {discussion.course}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs bg-accent/50 border-accent">
-                      {discussion.course}
-                    </Badge>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground text-sm">No recent discussions</p>
                   </div>
-                ))}
+                )}
                 <Button variant="outline" size="sm" className="w-full mt-4 btn-glass" asChild>
                   <a href="/forums">View All Discussions</a>
                 </Button>
@@ -254,20 +217,24 @@ const Index = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
                     <span className="text-sm font-medium">Study Time</span>
-                    <span className="font-bold text-primary">8.5 hrs</span>
+                    <span className="font-bold text-primary">{progressStats?.studyTime || '0h'}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
-                    <span className="text-sm font-medium">Modules Completed</span>
-                    <span className="font-bold text-primary">12</span>
+                    <span className="text-sm font-medium">Courses Completed</span>
+                    <span className="font-bold text-primary">{progressStats?.coursesCompleted || 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
-                    <span className="text-sm font-medium">Quiz Scores</span>
-                    <span className="font-bold text-success">92% avg</span>
+                    <span className="text-sm font-medium">Overall Progress</span>
+                    <span className="font-bold text-success">{progressStats?.totalProgress || 0}%</span>
                   </div>
                   <div className="pt-4 border-t border-white/10">
                     <div className="p-4 rounded-xl bg-gradient-primary text-white text-center">
                       <span className="text-2xl">🎉</span>
-                      <p className="font-medium mt-2">Excellent Progress!</p>
+                      <p className="font-medium mt-2">
+                        {progressStats?.totalProgress && progressStats.totalProgress > 50 
+                          ? 'Excellent Progress!' 
+                          : 'Keep Learning!'}
+                      </p>
                     </div>
                   </div>
                 </div>

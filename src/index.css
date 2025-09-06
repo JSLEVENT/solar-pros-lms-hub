@@ -33,9 +33,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 27%;
     
-    --primary: 0 72% 51%;
+    --primary: 258 90% 66%;
     --primary-foreground: 0 0% 98%;
-    --primary-hover: 0 72% 45%;
+    --primary-hover: 258 90% 60%;
     
     --secondary: 210 20% 98%;
     --secondary-foreground: 215 25% 27%;
@@ -55,6 +55,12 @@
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 9%;
+    
+    /* Level Colors - Reserve red for urgent only */
+    --level-beginner: 142 76% 36%;
+    --level-intermediate: 38 92% 50%;
+    --level-advanced: 258 90% 66%;
+    --level-urgent: 0 72% 51%;
     
     --border: 220 13% 91%;
     --input: 220 13% 91%;
@@ -114,9 +120,9 @@
     --popover: 215 28% 9%;
     --popover-foreground: 210 20% 98%;
     
-    --primary: 0 72% 58%;
+    --primary: 258 90% 70%;
     --primary-foreground: 215 28% 7%;
-    --primary-hover: 0 72% 52%;
+    --primary-hover: 258 90% 64%;
     
     --secondary: 215 28% 11%;
     --secondary-foreground: 210 20% 98%;
@@ -136,6 +142,12 @@
     
     --warning: 38 92% 55%;
     --warning-foreground: 215 28% 7%;
+    
+    /* Level Colors - Dark mode */
+    --level-beginner: 142 76% 42%;
+    --level-intermediate: 38 92% 55%;
+    --level-advanced: 258 90% 70%;
+    --level-urgent: 0 72% 58%;
     
     --border: 215 28% 18%;
     --input: 215 28% 18%;
@@ -218,6 +230,23 @@
   .btn-glass:hover {
     @apply bg-glass-white/20 border-white/30;
     box-shadow: var(--shadow-soft);
+  }
+
+  /* Level Indicator Classes */
+  .level-beginner {
+    @apply bg-success/20 text-success border-success/30;
+  }
+
+  .level-intermediate {
+    @apply bg-warning/20 text-warning-foreground border-warning/30;
+  }
+
+  .level-advanced {
+    @apply bg-primary/20 text-primary border-primary/30;
+  }
+
+  .level-urgent {
+    @apply bg-destructive/20 text-destructive border-destructive/30;
   }
 
   /* Typography Enhancements */
