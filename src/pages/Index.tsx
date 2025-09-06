@@ -16,10 +16,10 @@ const Index = () => {
   const { profile } = useAuth();
   
   // Real database integrations
-  const { data: enrolledCourses, isLoading: coursesLoading } = useUserEnrollments();
-  const { data: progressStats, isLoading: progressLoading } = useUserProgress();
-  const { data: upcomingEvents, isLoading: eventsLoading } = useUpcomingEvents();
-  const { data: recentDiscussions, isLoading: discussionsLoading } = useRecentDiscussions();
+  const { data: enrolledCourses, isLoading: coursesLoading, isError: coursesError } = useUserEnrollments();
+  const { data: progressStats, isLoading: progressLoading, isError: progressError } = useUserProgress();
+  const { data: upcomingEvents, isLoading: eventsLoading, isError: eventsError } = useUpcomingEvents();
+  const { data: recentDiscussions, isLoading: discussionsLoading, isError: discussionsError } = useRecentDiscussions();
 
   // User data from auth
   const currentUser = {
@@ -31,7 +31,8 @@ const Index = () => {
   // Calculate recent activity from real data
   const recentActivity = {
     coursesInProgress: enrolledCourses?.filter(c => c.status === 'active').length || 0,
-    upcomingDeadlines: upcomingEvents?.filter(e => e.type === 'deadline').length || 0,
+    completedToday: (enrolledCourses||[]).filter(c => c.status === 'completed' && c.completed_at && new Date(c.completed_at).toDateString() === new Date().toDateString()).length,
+    upcomingDeadlines: (upcomingEvents||[]).filter(e => e.type === 'deadline').length || 0,
     newCertificates: progressStats?.certificates || 0,
     studyStreak: progressStats?.streak || 0
   };
@@ -92,31 +93,16 @@ const Index = () => {
                   <a href="/courses">View All Courses</a>
                 </Button>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {enrolledCourses && enrolledCourses.length > 0 ? (
-                  enrolledCourses.slice(0, 2).map((course) => (
-                      <div key={course.id} className="interactive-card">
-                        <CourseCard
-                          course={{
-                            id: course.id,
-                            title: course.title,
-                            description: course.description || '',
-                            instructor: course.instructor_name || 'Unknown Instructor',
-                            instructorAvatar: '',
-                            category: course.category || 'General',
-                            duration: course.duration || '—',
-                            enrolled: 0,
-                            rating: 4.5,
-                            progress: course.progress,
-                            status: course.status === 'completed' ? 'completed' : (course.status === 'active' ? 'in-progress' : 'not-enrolled'),
-                            thumbnail: course.image_url || undefined,
-                            level: (course.level as 'Beginner' | 'Intermediate' | 'Advanced') || 'Beginner'
-                          }}
-                          variant="enrolled"
-                        />
-                      </div>
-                  ))
-                ) : (
+              <div className="flex items-center justify-between mt-2">
+                {enrolledCourses && enrolledCourses.length > 0 && (
+                  <Button size="sm" variant="outline" asChild>
+                    <a href="/my-training">Go to My Training</a>
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[120px]">
+                {coursesError && <div className="col-span-2 p-6 text-sm text-red-500 border rounded-xl">Failed to load courses.</div>}
+                {!coursesError && enrolledCourses && enrolledCourses.length === 0 && (
                   <div className="col-span-2 text-center py-12">
                     <p className="text-muted-foreground">No enrolled courses yet.</p>
                     <Button variant="outline" className="mt-4" asChild>
@@ -124,6 +110,31 @@ const Index = () => {
                     </Button>
                   </div>
                 )}
+                {!coursesError && enrolledCourses && enrolledCourses.slice(0,2).map(course => (
+                  <div key={course.id} className="interactive-card">
+                    <CourseCard
+                      course={{
+                        id: course.id,
+                        title: course.title,
+                        description: course.description || '',
+                        instructor: course.instructor_name || 'Unknown Instructor',
+                        instructorAvatar: '',
+                        category: course.category || 'General',
+                        duration: course.duration || '—',
+                        enrolled: 0,
+                        rating: 4.5,
+                        progress: course.progress,
+                        status: course.status === 'completed' ? 'completed' : (course.status === 'active' ? 'in-progress' : 'not-enrolled'),
+                        thumbnail: course.image_url || undefined,
+                        level: (course.level as 'Beginner' | 'Intermediate' | 'Advanced') || 'Beginner'
+                      }}
+                      variant="enrolled"
+                    />
+                  </div>
+                ))}
+                {coursesLoading && Array.from({length:2}).map((_,i)=>(
+                  <div key={i} className="h-40 rounded-xl bg-muted/40 animate-pulse" />
+                ))}
               </div>
             </div>
           </div>
@@ -141,7 +152,15 @@ const Index = () => {
                 </h3>
               </div>
               <div className="p-6 space-y-4">
-                {upcomingEvents && upcomingEvents.length > 0 ? (
+                {eventsError && (
+                  <div className="text-center py-8 text-sm text-red-500">Failed to load events.</div>
+                )}
+                {!eventsError && eventsLoading && (
+                  <div className="space-y-3">
+                    {Array.from({length:3}).map((_,i)=>(<div key={i} className="h-14 rounded-xl bg-accent/20 animate-pulse" />))}
+                  </div>
+                )}
+                {!eventsError && !eventsLoading && upcomingEvents && upcomingEvents.length > 0 ? (
                   upcomingEvents.map((event) => (
                     <div key={event.id} className="flex items-start gap-4 p-4 rounded-xl bg-accent/20 hover:bg-accent/30 transition-colors">
                       <div className="w-3 h-3 rounded-full bg-gradient-primary mt-2 shadow-glow" />
@@ -181,7 +200,15 @@ const Index = () => {
                 </h3>
               </div>
               <div className="p-6 space-y-4">
-                {recentDiscussions && recentDiscussions.length > 0 ? (
+                {discussionsError && (
+                  <div className="text-center py-8 text-sm text-red-500">Failed to load discussions.</div>
+                )}
+                {!discussionsError && discussionsLoading && (
+                  <div className="space-y-3">
+                    {Array.from({length:4}).map((_,i)=>(<div key={i} className="h-20 rounded-xl bg-accent/20 animate-pulse" />))}
+                  </div>
+                )}
+                {!discussionsError && !discussionsLoading && recentDiscussions && recentDiscussions.length > 0 ? (
                   recentDiscussions.map((discussion) => (
                     <div key={discussion.id} className="space-y-3 p-4 rounded-xl hover:bg-accent/20 transition-colors cursor-pointer">
                       <h4 className="font-medium text-sm leading-relaxed">{discussion.title}</h4>
@@ -221,18 +248,28 @@ const Index = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
-                    <span className="text-sm font-medium">Study Time</span>
-                    <span className="font-bold text-primary">{progressStats?.studyTime || '0h'}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
-                    <span className="text-sm font-medium">Courses Completed</span>
-                    <span className="font-bold text-primary">{progressStats?.coursesCompleted || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
-                    <span className="text-sm font-medium">Overall Progress</span>
-                    <span className="font-bold text-success">{progressStats?.totalProgress || 0}%</span>
-                  </div>
+                  {progressError && <div className="p-4 rounded-lg bg-accent/20 text-sm text-red-500">Failed to load progress.</div>}
+                  {!progressError && progressLoading && (
+                    <div className="space-y-3">
+                      {Array.from({length:3}).map((_,i)=>(<div key={i} className="h-10 rounded-lg bg-accent/20 animate-pulse" />))}
+                    </div>
+                  )}
+                  {!progressError && !progressLoading && (
+                    <>
+                      <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                        <span className="text-sm font-medium">Study Time</span>
+                        <span className="font-bold text-primary">{progressStats?.studyTime || '0h'}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                        <span className="text-sm font-medium">Courses Completed</span>
+                        <span className="font-bold text-primary">{progressStats?.coursesCompleted || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 rounded-lg bg-accent/20">
+                        <span className="text-sm font-medium">Overall Progress</span>
+                        <span className="font-bold text-success">{progressStats?.totalProgress || 0}%</span>
+                      </div>
+                    </>
+                  )}
                   <div className="pt-4 border-t border-white/10">
                     <div className="p-4 rounded-xl bg-gradient-primary text-white text-center">
                       <span className="text-2xl">🎉</span>
