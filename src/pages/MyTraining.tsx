@@ -1,389 +1,187 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { LMSLayout } from "@/components/LMSLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { BookOpen, FileText, Award, Clock, PlayCircle, Users } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { LMSLayout } from '@/components/LMSLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { BookOpen, PlayCircle } from 'lucide-react';
 
-interface LearningPlan {
+// Data model types
+export interface Course {
   id: string;
   title: string;
-  description: string;
-  status: string;
-  progress: number;
-  total_modules: number;
-  completed_modules: number;
-  due_date: string | null;
+  description: string | null;
+  level: string | null;
 }
 
-interface Course {
+export interface Enrollment {
   id: string;
-  title: string;
-  description: string;
-  status: string;
+  user_id: string;
+  course_id: string;
+  status: 'not_started' | 'in_progress' | 'completed';
   progress: number;
-  instructor: string;
-  duration: number;
-  level: string;
-}
-
-interface Assessment {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  score: number | null;
-  passing_score: number;
-  attempts: number;
-  max_attempts: number;
-  due_date: string | null;
+  courses?: Course;
 }
 
 const MyTraining = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [learningPlans, setLearningPlans] = useState<LearningPlan[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [error, setError] = useState<string|null>(null);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      fetchTrainingData();
-    }
-  }, [user]);
+  useEffect(()=>{ if(user) fetchData(); },[user]);
 
-  const fetchTrainingData = async () => {
+  async function fetchData(){
+    if(!user) return;
     try {
-      setLoading(true);
-      
-      // Mock learning plans data since the table doesn't exist yet
-      const plansData: LearningPlan[] = [
-        {
-          id: '1',
-          title: 'Solar Sales Fundamentals',
-          description: 'Complete training program for solar sales basics',
-          status: 'in_progress',
-          progress: 65,
-          total_modules: 8,
-          completed_modules: 5,
-          due_date: '2024-12-31'
-        }
-      ];
-      
-      // Fetch enrolled courses
-      const { data: enrollmentsData } = await supabase
+      setLoading(true); setError(null);
+      const { data, error: qErr } = await supabase
         .from('enrollments')
-        .select(`
-          *,
-          courses (
-            id,
-            title,
-            description,
-            level
-          )
-        `)
-        .eq('user_id', user?.id);
-
-      // Fetch assessments
-      const { data: assessmentsData } = await supabase
-        .from('assessments')
-        .select('*');
-
-      // Transform assessments to match our interface
-      const transformedAssessments: Assessment[] = assessmentsData?.map(assessment => ({
-        id: assessment.id,
-        title: assessment.title,
-        description: assessment.description,
-        status: 'not_started', // Mock status
-        score: null,
-        passing_score: assessment.passing_score,
-        attempts: 0,
-        max_attempts: assessment.max_attempts,
-        due_date: null
-      })) || [];
-
-      setLearningPlans(plansData || []);
-      setCourses(enrollmentsData?.map(enrollment => ({
-        id: enrollment.courses.id,
-        title: enrollment.courses.title,
-        description: enrollment.courses.description,
-        status: enrollment.status,
-        progress: enrollment.progress,
-        instructor: 'Instructor', // Mock instructor name
-        duration: 120, // Mock duration
-        level: enrollment.courses.level
-      })) || []);
-      setAssessments(transformedAssessments);
-    } catch (error) {
-      console.error('Error fetching training data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load training data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'not_started': return 'bg-gray-100 text-gray-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (loading) {
-    return (
-      <LMSLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-        </div>
-      </LMSLayout>
-    );
+        .select('id,user_id,course_id,status,progress,courses(id,title,description,level)')
+        .eq('user_id', user.id)
+        .order('created_at',{ ascending:false });
+      if(qErr) throw qErr;
+      setEnrollments((data||[]) as Enrollment[]);
+    } catch(e:any){
+      console.error(e);
+      setError('Failed to load enrolled courses');
+      toast({ title:'Error', description:'Failed to load enrolled courses', variant:'destructive' });
+    } finally { setLoading(false); }
   }
+
+  const statusBadge = (status: Enrollment['status']) => {
+    const base='px-2 py-0.5 rounded text-[10px] font-medium';
+    if(status==='completed') return <span className={base + ' bg-green-100 text-green-800'}>Completed</span>;
+    if(status==='in_progress') return <span className={base + ' bg-blue-100 text-blue-800'}>In Progress</span>;
+    return <span className={base + ' bg-gray-100 text-gray-800'}>Not Started</span>;
+  };
+
+  if(loading){
+    return <LMSLayout><div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div></LMSLayout>;
+  }
+
+  const total = enrollments.length;
+  const completedCount = enrollments.filter(e=> e.status==='completed').length;
+  const inProgressCount = enrollments.filter(e=> e.status==='in_progress').length;
+  const notStartedCount = enrollments.filter(e=> e.status==='not_started').length;
+  const avgProgress = total ? Math.round(enrollments.reduce((a,e)=> a + (e.progress||0),0)/total) : 0;
 
   return (
     <LMSLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Training</h1>
-          <p className="text-muted-foreground">
-            Access all your assigned learning content, courses, and assessments
-          </p>
+          <p className="text-muted-foreground">Your enrolled courses and progress</p>
         </div>
-
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 max-w-xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="plans">Learning Plans</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Courses</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{courses.filter(c => c.status === 'in_progress').length}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Learning Plans</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{learningPlans.length}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Assessments</CardTitle>
-                  <Award className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{assessments.filter(a => a.status === 'not_started').length}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {courses.length > 0 ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length) : 0}%
-                  </div>
-                </CardContent>
-              </Card>
+          <TabsContent value="overview" className="space-y-6 mt-4">
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Stat label="Enrolled" value={total} />
+              <Stat label="Avg Progress" value={avgProgress + '%'} />
+              <Stat label="Active" value={inProgressCount} />
+              <Stat label="Completed" value={completedCount} />
+              <Stat label="Not Started" value={notStartedCount} />
             </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {courses.slice(0, 3).map((course) => (
-                      <div key={course.id} className="flex items-center space-x-4">
-                        <PlayCircle className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">{course.title}</p>
-                          <Progress value={course.progress} className="h-2" />
-                        </div>
-                        <Badge className={getStatusColor(course.status)}>
-                          {course.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upcoming Deadlines</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {assessments.filter(a => a.due_date).slice(0, 3).map((assessment) => (
-                      <div key={assessment.id} className="flex items-center justify-between">
+            {!error && total===0 && <div className="border rounded-lg p-6 text-sm text-muted-foreground">You have no course enrollments yet.</div>}
+            {total>0 && (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {enrollments.slice(0,6).map(en=> (
+                  <Card key={en.id} className="flex flex-col">
+                    <CardHeader className="flex-1">
+                      <div className="flex justify-between items-start gap-4">
                         <div>
-                          <p className="text-sm font-medium">{assessment.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Due: {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'No deadline'}
-                          </p>
+                          <CardTitle className="line-clamp-1">{en.courses?.title || 'Untitled Course'}</CardTitle>
+                          <CardDescription className="line-clamp-2 mt-1">{en.courses?.description || 'No description provided.'}</CardDescription>
                         </div>
-                        <Badge className={getStatusColor(assessment.status)}>
-                          {assessment.status.replace('_', ' ')}
-                        </Badge>
+                        {statusBadge(en.status)}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="courses" className="space-y-4">
-            <div className="grid gap-4">
-              {courses.map((course) => (
-                <Card key={course.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{course.title}</CardTitle>
-                        <CardDescription>{course.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Progress value={en.progress||0} className="h-2" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{en.progress||0}% complete</span>
+                        {en.courses?.level && <span className="uppercase">{en.courses.level}</span>}
                       </div>
-                      <Badge className={getStatusColor(course.status)}>
-                        {course.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Progress: {course.progress}%</span>
-                        <span>Instructor: {course.instructor}</span>
-                        <span>Level: {course.level}</span>
-                      </div>
-                      <Progress value={course.progress} className="h-2" />
-                      <div className="flex justify-between">
-                        <Button variant="outline" size="sm">
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          View Course
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="flex-1">
+                          <Link to={`/course/${en.courses?.id || en.course_id}`}><BookOpen className="h-4 w-4 mr-1" /> View</Link>
                         </Button>
-                        <Button size="sm">
-                          <PlayCircle className="h-4 w-4 mr-2" />
-                          Continue Learning
+                        <Button asChild size="sm" className="flex-1">
+                          <Link to={`/course/${en.courses?.id || en.course_id}`}><PlayCircle className="h-4 w-4 mr-1" /> {en.status==='completed'? 'Review':'Start'}</Link>
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
-
-          <TabsContent value="plans" className="space-y-4">
-            <div className="grid gap-4">
-              {learningPlans.map((plan) => (
-                <Card key={plan.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{plan.title}</CardTitle>
-                        <CardDescription>{plan.description}</CardDescription>
+          <TabsContent value="courses" className="mt-4 space-y-4">
+            {total===0 && <div className="border rounded-lg p-6 text-sm text-muted-foreground">No courses yet.</div>}
+            {total>0 && (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {enrollments.map(en=> (
+                  <Card key={en.id} className="flex flex-col">
+                    <CardHeader className="flex-1">
+                      <div className="flex justify-between items-start gap-4">
+                        <div>
+                          <CardTitle className="line-clamp-1">{en.courses?.title || 'Untitled Course'}</CardTitle>
+                          <CardDescription className="line-clamp-2 mt-1">{en.courses?.description || 'No description provided.'}</CardDescription>
+                        </div>
+                        {statusBadge(en.status)}
                       </div>
-                      <Badge className={getStatusColor(plan.status)}>
-                        {plan.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{plan.completed_modules} of {plan.total_modules} modules completed</span>
-                        {plan.due_date && <span>Due: {new Date(plan.due_date).toLocaleDateString()}</span>}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Progress value={en.progress||0} className="h-2" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{en.progress||0}% complete</span>
+                        {en.courses?.level && <span className="uppercase">{en.courses.level}</span>}
                       </div>
-                      <Progress value={plan.progress} className="h-2" />
-                      <Button size="sm">
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Learning Plan
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="flex-1">
+                          <Link to={`/course/${en.courses?.id || en.course_id}`}><BookOpen className="h-4 w-4 mr-1" /> View</Link>
+                        </Button>
+                        <Button asChild size="sm" className="flex-1">
+                          <Link to={`/course/${en.courses?.id || en.course_id}`}><PlayCircle className="h-4 w-4 mr-1" /> {en.status==='completed'? 'Review':'Start'}</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
-
-          <TabsContent value="assessments" className="space-y-4">
-            <div className="grid gap-4">
-              {assessments.map((assessment) => (
-                <Card key={assessment.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{assessment.title}</CardTitle>
-                        <CardDescription>{assessment.description}</CardDescription>
-                      </div>
-                      <Badge className={getStatusColor(assessment.status)}>
-                        {assessment.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Score: </span>
-                          <span>{assessment.score ? `${assessment.score}%` : 'Not taken'}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Passing Score: </span>
-                          <span>{assessment.passing_score}%</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Attempts: </span>
-                          <span>{assessment.attempts} of {assessment.max_attempts}</span>
-                        </div>
-                        {assessment.due_date && (
-                          <div>
-                            <span className="text-muted-foreground">Due: </span>
-                            <span>{new Date(assessment.due_date).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button size="sm">
-                        <Award className="h-4 w-4 mr-2" />
-                        {assessment.status === 'not_started' ? 'Start Assessment' : 'Retake Assessment'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          <TabsContent value="plans" className="mt-4">
+            <div className="border rounded-lg p-6 text-sm text-muted-foreground">Learning plans coming soon.</div>
+          </TabsContent>
+            <TabsContent value="assessments" className="mt-4">
+            <div className="border rounded-lg p-6 text-sm text-muted-foreground">Assessments coming soon.</div>
           </TabsContent>
         </Tabs>
       </div>
     </LMSLayout>
   );
 };
+
+function Stat({ label, value }:{ label:string; value: string|number }){
+  return (
+    <div className="px-4 py-3 rounded-lg bg-muted/40 flex flex-col min-w-[110px]">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xl font-semibold">{value}</span>
+    </div>
+  );
+}
 
 export default MyTraining;
