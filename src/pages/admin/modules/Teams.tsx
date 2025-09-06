@@ -10,10 +10,25 @@ export function AdminTeams(){
   const [membersCache, setMembersCache] = useState<Record<string,string>>({});
   const [newTeam, setNewTeam] = useState({ name:'', description:'' });
   const [showCreate, setShowCreate] = useState(false);
-  useEffect(()=>{(async ()=>{ const { data } = await supabase.from('profiles').select('user_id,full_name').eq('role','manager'); setManagers(data||[]); })();},[]);
+  useEffect(()=>{(async ()=>{ 
+    // Try extended columns; if fails, fallback to legacy
+    let fetched:any[]|null = null;
+    try {
+      const { data, error } = await supabase.from('profiles').select('user_id,full_name,first_name,last_name').eq('role','manager');
+      if (!error) fetched = data as any[];
+      if (error && (error as any).message?.includes("column") ) {
+        const { data: legacy } = await supabase.from('profiles').select('user_id,full_name').eq('role','manager');
+        fetched = legacy as any[];
+      }
+    } catch {
+      const { data: legacy } = await supabase.from('profiles').select('user_id,full_name').eq('role','manager');
+      fetched = legacy as any[];
+    }
+    setManagers((fetched||[]).map(r=> ({ user_id:r.user_id, full_name: r.first_name || (r.full_name?.split(' ')[0]) || r.full_name || null })) );
+  })();},[]);
   async function loadMembers(teamId:string){
-    const { data } = await supabase.from('team_memberships').select('user_id, profiles: user_id(full_name)').eq('team_id', teamId);
-    const names = (data||[]).reduce((acc:any,row:any)=> { acc[row.user_id]= row.profiles?.full_name || row.user_id; return acc; }, {});
+  const { data } = await supabase.from('team_memberships').select('user_id, profiles: user_id(full_name,first_name,last_name)').eq('team_id', teamId);
+  const names = (data||[]).reduce((acc:any,row:any)=> { const p = row.profiles; acc[row.user_id]= p?.first_name || (p?.full_name?.split(' ')[0]) || row.user_id; return acc; }, {} as Record<string,string>);
     setMembersCache(c=> ({...c, ...names }));
   }
   return (

@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Profile {
   user_id: string;
   full_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   // The following fields may not exist yet in the current DB row; mark optional
   display_name?: string | null;
   job_title?: string | null;
@@ -13,8 +15,8 @@ export interface Profile {
   role: string;
   time_zone?: string | null;
   locale?: string | null;
-  bio?: string | null;
   preferences?: any;
+  mobile_number?: string | null;
   last_active_at?: string | null;
   first_login_at?: string | null;
   last_login_at?: string | null;
@@ -81,6 +83,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const normalized: Profile = {
         user_id: data.user_id,
         full_name: data.full_name,
+        first_name: (data as any).first_name ?? null,
+        last_name: (data as any).last_name ?? null,
         avatar_url: data.avatar_url,
         role: data.role as string,
         created_at: data.created_at,
@@ -90,13 +94,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         job_title: (data as any).job_title ?? null,
         time_zone: (data as any).time_zone ?? null,
         locale: (data as any).locale ?? null,
-        bio: (data as any).bio ?? null,
         preferences: (data as any).preferences ?? {},
         last_active_at: (data as any).last_active_at ?? null,
         first_login_at: (data as any).first_login_at ?? null,
         last_login_at: (data as any).last_login_at ?? null,
         login_count: (data as any).login_count ?? 0,
         total_learning_seconds: (data as any).total_learning_seconds ?? 0,
+        mobile_number: (data as any).mobile_number ?? null,
       };
       return normalized;
     } catch (error: any) {

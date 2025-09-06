@@ -8,7 +8,7 @@ import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 export function AdminUsers(){
   const { data, isLoading, isError, roleMutation, activeMutation, inviteMutation } = useUsers();
   const paged = usePaginatedUsers(20);
-  const [inviteForm, setInviteForm] = useState({ email:'', full_name:'', role:'learner' });
+  const [inviteForm, setInviteForm] = useState({ email:'', first_name:'', last_name:'', role:'learner' });
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Users</h1>
@@ -16,14 +16,18 @@ export function AdminUsers(){
         <p className="font-medium text-sm">Invite User</p>
         <div className="grid md:grid-cols-4 gap-2">
           <input className="border rounded h-9 px-2 bg-background" placeholder="Email" value={inviteForm.email} onChange={e=> setInviteForm(f=>({...f,email:e.target.value}))} />
-          <input className="border rounded h-9 px-2 bg-background" placeholder="Full name" value={inviteForm.full_name} onChange={e=> setInviteForm(f=>({...f,full_name:e.target.value}))} />
+          <input className="border rounded h-9 px-2 bg-background" placeholder="First name" value={inviteForm.first_name} onChange={e=> setInviteForm(f=>({...f,first_name:e.target.value}))} />
+          <input className="border rounded h-9 px-2 bg-background" placeholder="Last name" value={inviteForm.last_name} onChange={e=> setInviteForm(f=>({...f,last_name:e.target.value}))} />
           <select className="border rounded h-9 px-2 bg-background" value={inviteForm.role} onChange={e=> setInviteForm(f=>({...f,role:e.target.value}))}>
             <option value="learner">Learner</option>
             <option value="manager">Manager</option>
             <option value="admin">Admin</option>
             <option value="owner">Owner</option>
           </select>
-          <button disabled={!inviteForm.email || inviteMutation.isPending} onClick={()=> inviteMutation.mutate(inviteForm, { onSuccess: ()=> setInviteForm({ email:'', full_name:'', role:'learner' }) })} className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50">{inviteMutation.isPending? 'Sending...':'Send Invite'}</button>
+          <button disabled={!inviteForm.email || inviteMutation.isPending} onClick={()=> {
+            const payload = { ...inviteForm, full_name: `${inviteForm.first_name} ${inviteForm.last_name}`.trim() } as any;
+            inviteMutation.mutate(payload, { onSuccess: ()=> setInviteForm({ email:'', first_name:'', last_name:'', role:'learner' }) });
+          }} className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50">{inviteMutation.isPending? 'Sending...':'Send Invite'}</button>
         </div>
       </div>
   {isLoading && <LoadingSkeleton lines={4} />}
@@ -32,7 +36,7 @@ export function AdminUsers(){
         {(paged.data?.data||[]).map((u: any) => (
           <div key={u.user_id} className="p-4 border rounded-xl flex items-center justify-between">
             <div className="space-y-1">
-              <p className="font-medium">{u.full_name || 'Unnamed'}</p>
+              <p className="font-medium">{(u.first_name || (u.full_name? u.full_name.split(' ')[0]:'')) + (u.last_name? ' '+u.last_name : '') || 'Unnamed'}</p>
               <p className="text-xs text-muted-foreground break-all">{u.user_id}</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs capitalize">{u.role}</Badge>

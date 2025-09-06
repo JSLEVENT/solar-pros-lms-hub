@@ -3,7 +3,6 @@ import { LMSLayout } from '@/components/LMSLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { AvatarUploader } from '@/components/AvatarUploader';
 import { useToast } from '@/hooks/use-toast';
@@ -14,24 +13,29 @@ export default function ProfileSettings() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     display_name: '',
     job_title: '',
     time_zone: '',
     locale: '',
-    bio: '',
+    mobile_number: '',
     avatar_url: ''
   });
 
   useEffect(() => {
     if (profile) {
+      const parts = (profile.full_name || '').trim().split(' ');
+      const first_name = parts.slice(0, -1).join(' ') || parts[0] || '';
+      const last_name = parts.length > 1 ? parts[parts.length - 1] : '';
       setForm({
-        full_name: profile.full_name || '',
-        display_name: profile.display_name || '',
+        first_name,
+        last_name,
+        display_name: profile.display_name || first_name || '',
         job_title: profile.job_title || '',
         time_zone: profile.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         locale: profile.locale || navigator.language,
-        bio: profile.bio || '',
+        mobile_number: (profile as any).mobile_number || '',
         avatar_url: profile.avatar_url || ''
       });
     }
@@ -41,15 +45,16 @@ export default function ProfileSettings() {
     if (!user) return;
     setSaving(true);
     try {
+      const full_name = `${form.first_name} ${form.last_name}`.trim();
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: form.full_name,
-          display_name: form.display_name || null,
+          full_name,
+          display_name: form.display_name || full_name || null,
           job_title: form.job_title || null,
-          time_zone: form.time_zone || null,
+            time_zone: form.time_zone || null,
           locale: form.locale || null,
-          bio: form.bio || null,
+          mobile_number: form.mobile_number || null,
           avatar_url: form.avatar_url || null
         })
         .eq('user_id', user.id);
@@ -72,8 +77,12 @@ export default function ProfileSettings() {
           <ModernCardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name</label>
-                <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
+                <label className="text-sm font-medium">First Name</label>
+                <Input value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Last Name</label>
+                <Input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Display Name</label>
@@ -95,14 +104,15 @@ export default function ProfileSettings() {
                 <label className="text-sm font-medium">Avatar URL</label>
                 <Input value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} placeholder="https://..." />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mobile Number</label>
+                <Input value={form.mobile_number} onChange={e => setForm(f => ({ ...f, mobile_number: e.target.value }))} placeholder="+1 555 123 4567" />
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Avatar</label>
-                <AvatarUploader profileId={profile.id} currentUrl={form.avatar_url || profile.avatar_url} onChange={(url) => setForm(f => ({ ...f, avatar_url: url }))} />
+                <AvatarUploader profileId={profile.user_id} currentUrl={form.avatar_url || profile.avatar_url} onChange={(url) => setForm(f => ({ ...f, avatar_url: url }))} />
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-medium">Bio</label>
-                <Textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={4} />
-              </div>
+              {/* Removed Bio field */}
             </div>
             <div className="flex justify-end">
               <Button onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
