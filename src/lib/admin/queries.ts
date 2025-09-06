@@ -59,6 +59,8 @@ export async function fetchAdminStats() {
   };
 }
 
+export type AdminStats = Awaited<ReturnType<typeof fetchAdminStats>>;
+
 export async function fetchUsers() {
   const data = await safeSelect('profiles','user_id, full_name, role, last_active_at, is_active, created_at');
   return sortByCreated(data as any[]);
@@ -298,5 +300,66 @@ export async function updateCourse(id: string, payload: Partial<{ title:string; 
 
 export async function deleteCourse(id: string){
   const { error } = await supabase.from('courses').delete().eq('id', id); if (error) throw error;
+}
+
+// ---------------------------------------------
+// Pagination: Courses (for admin dashboard)
+// ---------------------------------------------
+export async function fetchCoursesPage(page=0, pageSize=25){
+  try {
+    const from = page*pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase
+      .from('courses')
+      .select('id,title,category,level,status,duration,instructor_id,created_at', { count:'exact' })
+      .order('created_at',{ ascending:false })
+      .range(from,to);
+    if (error) return { data: [], count: 0 };
+    return { data: data||[], count: count||0 };
+  } catch { return { data: [], count: 0 }; }
+}
+
+// ---------------------------------------------
+// CSV Exports (server-side fresh queries, not relying on paginated state)
+// ---------------------------------------------
+function toCSV(rows: any[]): string {
+  if(!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const escape = (v: any) => {
+    if (v == null) return '';
+    const s = String(v).replace(/"/g,'""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  };
+  const lines = [headers.join(',')];
+  for (const r of rows){
+    lines.push(headers.map(h=> escape(r[h])).join(','));
+  }
+  return lines.join('\n');
+}
+
+export async function exportUsersCSV(){
+  const { data, error } = await supabase.from('profiles').select('user_id,full_name,role,is_active,last_active_at,created_at');
+  if (error) throw error;
+  return toCSV(data||[]);
+}
+
+export async function exportCoursesCSV(){
+  const { data, error } = await supabase.from('courses').select('id,title,category,level,status,duration,created_at');
+  if (error) throw error;
+  return toCSV(data||[]);
+}
+
+export async function exportEnrollmentsCSV(){
+  const { data, error } = await supabase.from('enrollments').select('id,user_id,course_id,status,progress,created_at');
+  if (error) throw error;
+  return toCSV(data||[]);
+}
+
+export async function downloadCSV(filename: string, csv: string){
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 

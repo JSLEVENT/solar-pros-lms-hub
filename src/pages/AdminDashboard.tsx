@@ -1,39 +1,20 @@
 // LEGACY: This file is being deprecated in favor of modular /admin/* routes.
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { LMSLayout } from '@/components/LMSLayout';
-import { ModernCard, ModernCardContent, ModernCardHeader, ModernCardTitle } from '@/components/ui/modern-card';
+import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Users, 
-  BookOpen, 
-  GraduationCap, 
-  TrendingUp, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Download,
-  BarChart3,
-  Shield,
-  Settings,
-  FileText,
-  Award,
-  Calendar,
-  Mail,
-  UserPlus,
-  Layers
-} from 'lucide-react';
+import { Shield, TrendingUp, FileText, Settings, BarChart3, Users, BookOpen, Layers } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAdminStats, exportEnrollmentsCSV, downloadCSV } from '@/lib/admin/queries';
+import { StatsOverview } from '@/components/admin/StatsOverview';
+import { UserManagement } from '@/components/admin/UserManagement';
+import { CourseManagement } from '@/components/admin/CourseManagement';
+import { TeamManagementPanel } from '@/components/admin/TeamManagementPanel';
 import { ContentRepository } from '@/components/admin/ContentRepository';
-// @ts-ignore (component may be generated later)
+// @ts-ignore placeholder
 import { LearningPlans } from '@/components/admin/LearningPlans';
 
 interface AdminStats {
