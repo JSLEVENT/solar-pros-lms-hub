@@ -175,6 +175,23 @@ CREATE POLICY "profiles_update_admin_fields" ON public.profiles FOR UPDATE USING
   public.has_app_role(ARRAY['owner','admin'])
 );
 
+-- Enforce that non-admin self updates cannot modify restricted columns (role, is_active)
+CREATE OR REPLACE FUNCTION public.block_restricted_profile_columns()
+RETURNS trigger AS $$
+BEGIN
+  IF NOT public.has_app_role(ARRAY['owner','admin']) THEN
+    IF NEW.role IS DISTINCT FROM OLD.role OR NEW.is_active IS DISTINCT FROM OLD.is_active THEN
+      RAISE EXCEPTION 'insufficient_privilege: cannot modify role or is_active';
+    END IF;
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_block_restricted_profile_columns ON public.profiles;
+CREATE TRIGGER trg_block_restricted_profile_columns
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.block_restricted_profile_columns();
+
 -- 11. Analytics (insert restricted to server or future edge fn via service key; select aggregated only)
 ALTER TABLE public.analytics ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS analytics_select_all ON public.analytics;

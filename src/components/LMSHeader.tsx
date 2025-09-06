@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export function LMSHeader() {
   const { user, profile, signOut } = useAuth();
@@ -55,6 +56,7 @@ export function LMSHeader() {
     <header className="h-16 card-glass border-b border-white/10 flex items-center justify-between px-6 sticky top-0 z-50 backdrop-blur-xl">
       {/* Modern Logo */}
       <div className="flex items-center gap-3">
+        <ThemeToggle className="btn-glass" />
         <div className="w-9 h-9 bg-gradient-primary rounded-xl flex items-center justify-center shadow-glow">
           <span className="text-white font-bold text-sm">SP</span>
         </div>

@@ -10,7 +10,6 @@ export interface Profile {
   last_name?: string | null;
   // The following fields may not exist yet in the current DB row; mark optional
   job_title?: string | null;
-  avatar_url: string | null;
   role: string;
   time_zone?: string | null;
   preferences?: any;
@@ -83,7 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         full_name: data.full_name,
         first_name: (data as any).first_name ?? null,
         last_name: (data as any).last_name ?? null,
-        avatar_url: data.avatar_url,
         role: data.role as string,
         created_at: data.created_at,
         updated_at: data.updated_at,
