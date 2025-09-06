@@ -25,7 +25,8 @@ export function useTeamManagement(){
 
   const createMutation = useMutation({
     mutationFn: ({ name, description}:{ name:string; description:string }) => createTeam(name, description),
-    onSuccess: ()=> invalidateList()
+    // Cast to any because generated types may not yet include new columns (is_archived)
+    onSuccess: (created)=> { const c:any = created as any; invalidateList(); if(c?.id) { setSelectedId(c.id); } }
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, name, description}:{ id:string; name?:string; description?:string }) => updateTeam(id,{ name, description }),

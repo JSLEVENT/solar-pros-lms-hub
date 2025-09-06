@@ -1,10 +1,11 @@
 import { useTeamManagement } from '@/hooks/admin/useTeamManagement';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AdminTeamsAdvanced(){
   const {
@@ -153,27 +154,45 @@ export function AdminTeamsAdvanced(){
 }
 
 function AssignManagerSelect({ teamId, onAssign }:{ teamId:string; onAssign:(id:string)=>void }){
-  const [managerOptions,setManagerOptions] = useState<any[]>([]);
-  useState(()=>{ (async()=>{ const { data } = await fetch('/api/profiles?role=manager').then(r=> r.ok? r.json():[]).catch(()=>[]); setManagerOptions(data||[]); })(); });
+  const [options,setOptions] = useState<any[]>([]);
+  const [search,setSearch] = useState('');
+  useEffect(()=>{ let active=true; (async()=>{
+    const query = supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').eq('role','manager').order('first_name', { ascending:true }).limit(50);
+    const { data } = await query;
+    if(active) setOptions(data||[]);
+  })(); return ()=>{ active=false; }; },[]);
+  const filtered = useMemo(()=> search? options.filter(o=> (o.first_name||o.full_name||'').toLowerCase().includes(search.toLowerCase())): options,[options,search]);
   return (
-    <Select onValueChange={onAssign}>
-      <SelectTrigger className="h-7 w-48"><SelectValue placeholder="Assign manager" /></SelectTrigger>
-      <SelectContent>
-        {managerOptions.map(m=> <SelectItem key={m.user_id} value={m.user_id}>{m.first_name||m.full_name||m.user_id}</SelectItem>)}
-      </SelectContent>
-    </Select>
+    <div className="flex gap-2 items-center">
+      <Select onValueChange={onAssign}>
+        <SelectTrigger className="h-7 w-48"><SelectValue placeholder="Assign manager" /></SelectTrigger>
+        <SelectContent>
+          {filtered.map(m=> <SelectItem key={m.user_id} value={m.user_id}>{m.first_name||m.full_name||m.user_id}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Input placeholder="Search" value={search} onChange={e=> setSearch(e.target.value)} className="h-7 w-28 text-[11px]" />
+    </div>
   );
 }
 
 function AddMemberSelect({ teamId, onAdd }:{ teamId:string; onAdd:(id:string)=>void }){
-  const [userOptions,setUserOptions] = useState<any[]>([]);
-  useState(()=>{ (async()=>{ const { data } = await fetch('/api/profiles?role=learner').then(r=> r.ok? r.json():[]).catch(()=>[]); setUserOptions(data||[]); })(); });
+  const [options,setOptions] = useState<any[]>([]);
+  const [search,setSearch] = useState('');
+  useEffect(()=>{ let active=true; (async()=>{
+    const query = supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').eq('role','learner').order('first_name',{ascending:true}).limit(100);
+    const { data } = await query;
+    if(active) setOptions(data||[]);
+  })(); return ()=>{ active=false; }; },[]);
+  const filtered = useMemo(()=> search? options.filter(o=> (o.first_name||o.full_name||'').toLowerCase().includes(search.toLowerCase())): options,[options,search]);
   return (
-    <Select onValueChange={onAdd}>
-      <SelectTrigger className="h-7 w-48"><SelectValue placeholder="Add member" /></SelectTrigger>
-      <SelectContent>
-        {userOptions.map(u=> <SelectItem key={u.user_id} value={u.user_id}>{u.first_name||u.full_name||u.user_id}</SelectItem>)}
-      </SelectContent>
-    </Select>
+    <div className="flex gap-2 items-center">
+      <Select onValueChange={onAdd}>
+        <SelectTrigger className="h-7 w-48"><SelectValue placeholder="Add member" /></SelectTrigger>
+        <SelectContent>
+          {filtered.map(u=> <SelectItem key={u.user_id} value={u.user_id}>{u.first_name||u.full_name||u.user_id}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Input placeholder="Search" value={search} onChange={e=> setSearch(e.target.value)} className="h-7 w-28 text-[11px]" />
+    </div>
   );
 }

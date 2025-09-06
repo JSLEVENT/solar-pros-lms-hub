@@ -271,8 +271,12 @@ export async function fetchTopLearners(limit=10){
 
 // Teams & Memberships
 export async function createTeam(name: string, description: string){
-  const { data, error } = await supabase.from('teams').insert({ name, description }).select('id');
-  if (error) throw error; return data?.[0];
+  const { data, error } = await supabase
+    .from('teams')
+    .insert({ name, description })
+    .select('id,name,description,is_archived,created_at')
+    .single();
+  if (error) throw error; return data;
 }
 
 export async function addMemberToTeam(team_id: string, user_id: string){
