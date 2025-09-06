@@ -23,8 +23,8 @@ const Index = () => {
 
   // User data from auth
   const currentUser = {
-    name: profile?.full_name || "User",
-    role: profile?.role || "learner" as const,
+    name: profile?.first_name ? `${profile.first_name}${profile.last_name? ' '+profile.last_name:''}` : (profile?.full_name || "User"),
+    role: (profile?.role as 'admin'|'learner'|'instructor') || 'learner',
     notificationCount: 3 // This could be fetched from notifications table
   };
 
@@ -95,20 +95,26 @@ const Index = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {enrolledCourses && enrolledCourses.length > 0 ? (
                   enrolledCourses.slice(0, 2).map((course) => (
-                    <div key={course.id} className="interactive-card">
-                      <CourseCard 
-                        course={{
-                          ...course,
-                          instructor: course.instructor_name || 'Unknown Instructor',
-                          instructorAvatar: '',
-                          enrolled: 0, // Not available in current schema
-                          rating: 4.5, // Default rating
-                          level: (course.level as "Beginner" | "Intermediate" | "Advanced") || "Beginner",
-                          price: 0
-                        }} 
-                        variant="enrolled"
-                      />
-                    </div>
+                      <div key={course.id} className="interactive-card">
+                        <CourseCard
+                          course={{
+                            id: course.id,
+                            title: course.title,
+                            description: course.description || '',
+                            instructor: course.instructor_name || 'Unknown Instructor',
+                            instructorAvatar: '',
+                            category: course.category || 'General',
+                            duration: course.duration || '—',
+                            enrolled: 0,
+                            rating: 4.5,
+                            progress: course.progress,
+                            status: course.status === 'completed' ? 'completed' : (course.status === 'active' ? 'in-progress' : 'not-enrolled'),
+                            thumbnail: course.image_url || undefined,
+                            level: (course.level as 'Beginner' | 'Intermediate' | 'Advanced') || 'Beginner'
+                          }}
+                          variant="enrolled"
+                        />
+                      </div>
                   ))
                 ) : (
                   <div className="col-span-2 text-center py-12">

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Bell, User, LogOut, Settings, Shield, BookOpen, ChevronDown } from "lucide-react";
 import { Link } from 'react-router-dom';
@@ -29,7 +29,7 @@ export function LMSHeader() {
     }
   };
 
-  const userName = profile?.display_name || profile?.full_name || user?.email || 'User';
+  const userName = (profile?.first_name ? `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}` : (profile?.full_name || user?.email)) || 'User';
   const userRole = profile?.role || 'learner';
 
   const getGreeting = () => {
@@ -84,15 +84,14 @@ export function LMSHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-3 h-auto p-3 rounded-xl btn-glass">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                  <AvatarImage src="" />
                   <AvatarFallback className="bg-gradient-primary text-white font-medium">
-                    {profile?.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                    {userName.split(' ').map(p=> p[0]).join('').slice(0,2).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-xs uppercase text-muted-foreground tracking-wide">{getGreeting()}</span>
                   <span className="text-sm font-medium">
-                    {profile?.display_name || profile?.full_name || 'User'}
+                    {userName}
                     {profile?.job_title && (
                       <span className="ml-2 text-xs text-muted-foreground font-normal">{profile.job_title}</span>
                     )}
