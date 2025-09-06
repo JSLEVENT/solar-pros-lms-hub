@@ -62,8 +62,8 @@ const navigationItems: NavigationItem[] = [
     roles: ['learner', 'manager', 'admin', 'owner']
   },
   {
-    title: "Team Management",
-    href: "/admin/teams",
+    title: "Team View",
+    href: "/team-view",
     icon: Users,
     roles: ['manager', 'admin', 'owner']
   },

@@ -16,7 +16,7 @@ const LiveTrainings = lazy(()=> import('./pages/LiveTrainings'));
 const AdminIndex = lazy(()=> import('./pages/admin'));
 import { LMSLayout } from "./components/LMSLayout";
 import ProfileSettings from './pages/ProfileSettings';
-import { TeamManagement } from "./components/TeamManagement";
+import { TeamManagement } from "./components/TeamManagement"; // will be re-used as a manager 'Team View'
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
@@ -98,15 +98,15 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route 
-              path="/admin/teams" 
+            <Route
+              path="/team-view"
               element={
-                <ProtectedRoute requiredRole={["manager", "admin", "owner"]}>
+                <ProtectedRoute requiredRole={["manager","admin","owner"]}>
                   <LMSLayout>
                     <TeamManagement />
                   </LMSLayout>
                 </ProtectedRoute>
-              } 
+              }
             />
               <Route path="*" element={<div>Page Not Found</div>} />
             </Routes>

@@ -4,7 +4,7 @@ import { BarChart3, Users, Layers, BookOpen, FileText, Settings, LineChart, Buil
 const links = [
   { to: '/admin/overview', label: 'Overview', icon: BarChart3 },
   { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/teams', label: 'Teams', icon: Layers },
+  { to: '/admin/teams', label: 'Team Management', icon: Layers },
   { to: '/admin/courses', label: 'Courses', icon: BookOpen },
   { to: '/admin/repository', label: 'Repository', icon: FileText },
   { to: '/admin/plans', label: 'Plans', icon: Settings },
