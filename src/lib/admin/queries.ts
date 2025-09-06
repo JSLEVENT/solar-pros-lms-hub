@@ -86,6 +86,68 @@ export async function fetchTeams(includeArchived = true){
   return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
 }
 
+// Paginated teams with search & archived filter
+export async function fetchTeamsPage(params:{ page:number; pageSize:number; search?:string; includeArchived?:boolean }){
+  const { page, pageSize, search, includeArchived=true } = params;
+  try {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+  let query: any = supabase.from('teams').select('id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
+    if(!includeArchived){ query = query.eq('is_archived', false); }
+    if(search){ query = query.ilike('name', `%${search}%`); }
+    query = query.order('created_at',{ ascending:false }).range(from,to);
+    const { data, error, count } = await query;
+    if(error) return { data: [], count: 0 };
+    return { data: data||[], count: count||0 };
+  } catch { return { data: [], count: 0 }; }
+}
+
+export async function fetchTeamDetail(id: string){
+  try {
+  const { data: raw, error } = await supabase.from('teams').select('id,name,description,is_archived,created_at,manager_teams(manager_id),team_memberships(user_id)').eq('id', id).single();
+  const team: any = raw as any;
+  if(error || !team) return null;
+  const managerIds = ((team as any).manager_teams||[]).map((m:any)=> m.manager_id);
+  const memberIds = ((team as any).team_memberships||[]).map((m:any)=> m.user_id);
+    let managers: any[] = [];
+    let members: any[] = [];
+    if(managerIds.length){
+      const { data } = await supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', managerIds);
+      managers = data||[];
+    }
+    if(memberIds.length){
+      const { data } = await supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', memberIds);
+      members = data||[];
+    }
+    let analytics: any = null;
+    try { const { data: a } = await supabase.from('team_analytics').select('*').eq('team_id', id).maybeSingle(); analytics = a; } catch {}
+    return { team, managers, members, analytics };
+  } catch { return null; }
+}
+
+export async function updateTeam(id: string, payload: { name?:string; description?:string }){
+  const { error } = await supabase.from('teams').update(payload).eq('id', id); if(error) throw error;
+}
+
+export async function deleteTeam(id: string){
+  const { error } = await supabase.from('teams').delete().eq('id', id); if(error) throw error;
+}
+
+export async function bulkAddMembers(team_id: string, user_ids: string[]){
+  if(!user_ids.length) return;
+  const rows = user_ids.map(u=> ({ team_id, user_id: u }));
+  const { error } = await supabase.from('team_memberships').insert(rows); if(error) throw error;
+}
+
+export async function exportTeamMembers(team_id: string){
+  try {
+    const { data, error } = await supabase.from('team_memberships').select('user_id').eq('team_id', team_id);
+    if(error) throw error;
+    if(!data?.length) return 'user_id\n';
+    return 'user_id\n' + data.map(r=> r.user_id).join('\n');
+  } catch { return 'user_id\n'; }
+}
+
 export async function toggleTeamArchived(id: string, next: boolean){
   // is_archived not in generated types yet
   const { error } = await supabase.from('teams').update({ is_archived: next } as any).eq('id', id); if (error) throw error;
