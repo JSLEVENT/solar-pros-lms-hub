@@ -1,28 +1,36 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// Generic safe selector to gracefully handle missing tables/columns (42P01/42703)
+// ---------------------------------------------
+// Internal utilities
+// ---------------------------------------------
+type SimpleRecord = Record<string, any>;
+
 async function safeSelect(table: string, columns: string){
   try {
     const { data, error } = await supabase.from(table as any).select(columns as any);
     if (error) {
-      if ((error as any).code === '42P01') return []; // missing relation
-      if ((error as any).code === '42703') {
-        // Column missing: fallback to select('*') minimal set
+      const code = (error as any).code;
+      const status = (error as any).status;
+      if (code === '42P01') return [];           // table missing
+      if (code === '42703' || status === 400) {  // column missing / generic
         const retry = await supabase.from(table as any).select('*').limit(50);
-        if (retry.error) return [];
-        return retry.data || [];
-      }
-      // For 400 generic errors, attempt broad fallback once
-      if ((error as any).status === 400) {
-        const retry = await supabase.from(table as any).select('*').limit(50);
-        if (retry.error) return [];
-        return retry.data || [];
+        return retry.error ? [] : (retry.data||[]);
       }
       return [];
     }
     return data || [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
+
+function sortByCreated(a: SimpleRecord[], desc = true){
+  return [...a].sort((x,y)=> (desc?1:-1) * ( (y.created_at||'').localeCompare(x.created_at||'') ));
+}
+
+// ---------------------------------------------
+// Admin summary / users
+// ---------------------------------------------
 
 export async function fetchAdminStats() {
   const [users, courses, enrollments, certificates, teams, managers] = await Promise.all([
@@ -53,7 +61,7 @@ export async function fetchAdminStats() {
 
 export async function fetchUsers() {
   const data = await safeSelect('profiles','user_id, full_name, role, last_active_at, is_active, created_at');
-  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
+  return sortByCreated(data as any[]);
 }
 
 export async function fetchUsersPage(page=0, pageSize=25){
@@ -80,10 +88,15 @@ export async function inviteUser(payload: { email:string; full_name?:string; rol
   if (error) throw error; return data;
 }
 
+// ---------------------------------------------
+// Teams (simple list legacy) - kept for backward compatibility
+// Prefer paginated functions below in new UI
 export async function fetchTeams(includeArchived = true){
-  const cols = includeArchived ? 'id,name,description,is_archived,team_memberships(count),manager_teams(manager_id)' : 'id,name,description,team_memberships(count),manager_teams(manager_id)';
+  const cols = includeArchived
+    ? 'id,name,description,is_archived,team_memberships(count),manager_teams(manager_id)'
+    : 'id,name,description,team_memberships(count),manager_teams(manager_id)';
   const data = await safeSelect('teams', cols);
-  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
+  return sortByCreated(data as any[]);
 }
 
 // Paginated teams with search & archived filter
@@ -104,25 +117,28 @@ export async function fetchTeamsPage(params:{ page:number; pageSize:number; sear
 
 export async function fetchTeamDetail(id: string){
   try {
-  const { data: raw, error } = await supabase.from('teams').select('id,name,description,is_archived,created_at,manager_teams(manager_id),team_memberships(user_id)').eq('id', id).single();
-  const team: any = raw as any;
-  if(error || !team) return null;
-  const managerIds = ((team as any).manager_teams||[]).map((m:any)=> m.manager_id);
-  const memberIds = ((team as any).team_memberships||[]).map((m:any)=> m.user_id);
-    let managers: any[] = [];
-    let members: any[] = [];
-    if(managerIds.length){
-      const { data } = await supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', managerIds);
-      managers = data||[];
-    }
-    if(memberIds.length){
-      const { data } = await supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', memberIds);
-      members = data||[];
-    }
+    const { data: raw, error } = await supabase
+      .from('teams')
+      .select('id,name,description,is_archived,created_at,manager_teams(manager_id),team_memberships(user_id)')
+      .eq('id', id)
+      .single();
+    if (error || !raw) return null;
+    const team: any = raw;
+    const managerIds = (team.manager_teams||[]).map((m:any)=> m.manager_id);
+    const memberIds = (team.team_memberships||[]).map((m:any)=> m.user_id);
+    const [managersRes, membersRes] = await Promise.all([
+      managerIds.length ? supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', managerIds) : Promise.resolve({ data: [] }),
+      memberIds.length ? supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', memberIds) : Promise.resolve({ data: [] })
+    ] as any);
     let analytics: any = null;
-    try { const { data: a } = await supabase.from('team_analytics').select('*').eq('team_id', id).maybeSingle(); analytics = a; } catch {}
-    return { team, managers, members, analytics };
-  } catch { return null; }
+    try {
+      const { data: a } = await supabase.from('team_analytics').select('*').eq('team_id', id).maybeSingle();
+      analytics = a;
+    } catch {}
+    return { team, managers: managersRes.data||[], members: membersRes.data||[], analytics };
+  } catch {
+    return null;
+  }
 }
 
 export async function updateTeam(id: string, payload: { name?:string; description?:string }){
@@ -161,9 +177,11 @@ export async function removeManager(team_id: string, manager_id: string){
   const { error } = await supabase.from('manager_teams').delete().match({ team_id, manager_id }); if (error) throw error;
 }
 
+// ---------------------------------------------
+// Courses
 export async function fetchCourses(){
   const data = await safeSelect('courses','*');
-  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
+  return sortByCreated(data as any[]);
 }
 
 export async function fetchAssetsPage(page=0, pageSize=30, search=''){ 

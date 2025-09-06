@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminShell } from '@/components/admin/layout/AdminShell';
 import { AdminOverview } from './modules/Overview';
 import { AdminUsers } from './modules/Users';
-import { AdminTeams } from './modules/Teams';
+import { AdminTeamsAdvanced } from './modules/TeamsAdvanced';
 import { AdminCourses } from './modules/Courses';
 import { AdminRepository } from './modules/Repository';
 import { AdminPlans } from './modules/Plans';
@@ -15,7 +15,7 @@ export default function AdminIndex() {
       <Routes>
         <Route path="overview" element={<AdminOverview />} />
         <Route path="users" element={<AdminUsers />} />
-        <Route path="teams" element={<AdminTeams />} />
+  <Route path="teams" element={<AdminTeamsAdvanced />} />
         <Route path="courses" element={<AdminCourses />} />
         <Route path="repository" element={<AdminRepository />} />
         <Route path="plans" element={<AdminPlans />} />
