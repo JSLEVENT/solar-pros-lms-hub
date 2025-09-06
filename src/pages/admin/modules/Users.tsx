@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useUsers } from '@/hooks/admin/useUsers';
+import { usePaginatedUsers } from '@/hooks/admin/usePaginatedUsers';
 import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 
 export function AdminUsers(){
   const { data, isLoading, isError, roleMutation, activeMutation, inviteMutation } = useUsers();
+  const paged = usePaginatedUsers(20);
   const [inviteForm, setInviteForm] = useState({ email:'', full_name:'', role:'learner' });
   return (
     <div className="space-y-6">
@@ -23,10 +26,10 @@ export function AdminUsers(){
           <button disabled={!inviteForm.email || inviteMutation.isPending} onClick={()=> inviteMutation.mutate(inviteForm, { onSuccess: ()=> setInviteForm({ email:'', full_name:'', role:'learner' }) })} className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50">{inviteMutation.isPending? 'Sending...':'Send Invite'}</button>
         </div>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground">Loading users…</p>}
+  {isLoading && <LoadingSkeleton lines={4} />}
       {isError && <p className="text-sm text-red-600">Failed to load users</p>}
       <div className="space-y-3">
-        {(data||[]).map((u: any) => (
+        {(paged.data?.data||[]).map((u: any) => (
           <div key={u.user_id} className="p-4 border rounded-xl flex items-center justify-between">
             <div className="space-y-1">
               <p className="font-medium">{u.full_name || 'Unnamed'}</p>
@@ -54,7 +57,17 @@ export function AdminUsers(){
             </div>
           </div>
         ))}
-        {(!data || data.length===0) && !isLoading && <p className="text-sm text-muted-foreground">No users.</p>}
+        {paged.isLoading && <p className="text-sm text-muted-foreground">Loading page…</p>}
+        {(!paged.data || paged.data.data.length===0) && !paged.isLoading && <p className="text-sm text-muted-foreground">No users.</p>}
+        {paged.data && paged.data.count>paged.pageSize && (
+          <div className="flex items-center justify-between pt-2 text-xs">
+            <span>{paged.page*paged.pageSize+1}-{Math.min((paged.page+1)*paged.pageSize, paged.data.count)} of {paged.data.count}</span>
+            <div className="flex gap-2">
+              <button disabled={paged.page===0} onClick={()=> paged.setPage(p=> Math.max(0,p-1))} className="px-2 py-1 border rounded disabled:opacity-40">Prev</button>
+              <button disabled={(paged.page+1)*paged.pageSize >= paged.data.count} onClick={()=> paged.setPage(p=> p+1)} className="px-2 py-1 border rounded disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,18 +5,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import MyTraining from "./pages/MyTraining";
-import AITrainingArena from "./pages/AITrainingArena";
-import MyProgress from "./pages/MyProgress";
-import Calendar from "./pages/Calendar";
-import LiveTrainings from "./pages/LiveTrainings";
-import AdminIndex from "./pages/admin";
+import { Suspense, lazy } from 'react';
+const Index = lazy(()=> import('./pages/Index'));
+const Auth = lazy(()=> import('./pages/Auth'));
+const MyTraining = lazy(()=> import('./pages/MyTraining'));
+const AITrainingArena = lazy(()=> import('./pages/AITrainingArena'));
+const MyProgress = lazy(()=> import('./pages/MyProgress'));
+const Calendar = lazy(()=> import('./pages/Calendar'));
+const LiveTrainings = lazy(()=> import('./pages/LiveTrainings'));
+const AdminIndex = lazy(()=> import('./pages/admin'));
 import { LMSLayout } from "./components/LMSLayout";
 import ProfileSettings from './pages/ProfileSettings';
 import { TeamManagement } from "./components/TeamManagement";
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ErrorBoundary>
+            <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading module…</div>}>
             <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route 
@@ -102,6 +106,8 @@ const App = () => (
             />
               <Route path="*" element={<div>Page Not Found</div>} />
             </Routes>
+            </Suspense>
+            </ErrorBoundary>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

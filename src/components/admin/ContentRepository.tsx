@@ -29,6 +29,9 @@ export const ContentRepository = () => {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [assetTags, setAssetTags] = useState<Record<string,string[]>>({});
   const [preview, setPreview] = useState<Asset | null>(null);
+  const [page, setPage] = useState(0);
+  const pageSize = 24;
+  const [total, setTotal] = useState(0);
 
   useEffect(() => { refreshAll(); }, []);
   useEffect(()=> { const t = setTimeout(()=> setDebouncedSearch(search.trim().toLowerCase()), 300); return ()=> clearTimeout(t); }, [search]);
@@ -53,13 +56,15 @@ export const ContentRepository = () => {
   };
   const fetchAssets = async () => {
     try {
-      let query = (supabase as any).from('content_assets').select('*').order('created_at', { ascending: false });
+      let query = (supabase as any).from('content_assets').select('*', { count:'exact' }).order('created_at', { ascending: false });
       if (selectedFolder) query = query.eq('folder_id', selectedFolder);
       if (debouncedSearch) query = query.ilike('title', `%${debouncedSearch}%`);
-      const { data, error } = await query;
+      const from = page*pageSize; const to = from + pageSize - 1;
+      const { data, error, count } = await query.range(from,to);
       if (error) throw error;
       const list = data || [];
       setAssets(list);
+      setTotal(count||0);
       if (list.length) {
         const ids = list.map(a=> a.id);
         const { data: tagMap } = await (supabase as any)
@@ -315,6 +320,13 @@ export const ContentRepository = () => {
               </div>
             </div>
           )}
+          <div className="flex items-center justify-between pt-2 text-xs">
+            <span>{total===0? '0 items': `${page*pageSize+1}-${Math.min((page+1)*pageSize,total)} of ${total}`}</span>
+            <div className="flex gap-2">
+              <button disabled={page===0} onClick={()=> { setPage(p=> Math.max(0,p-1)); }} className="px-2 py-1 border rounded disabled:opacity-40">Prev</button>
+              <button disabled={(page+1)*pageSize >= total} onClick={()=> { setPage(p=> p+1); }} className="px-2 py-1 border rounded disabled:opacity-40">Next</button>
+            </div>
+          </div>
         </ModernCardContent>
       </ModernCard>
       {preview && (

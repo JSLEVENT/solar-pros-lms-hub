@@ -56,6 +56,16 @@ export async function fetchUsers() {
   return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
 }
 
+export async function fetchUsersPage(page=0, pageSize=25){
+  try {
+    const from = page*pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await supabase.from('profiles').select('user_id, full_name, role, last_active_at, is_active, created_at', { count:'exact' }).order('created_at',{ascending:false}).range(from,to);
+    if (error) return { data: [], count: 0 };
+    return { data: data||[], count: count||0 };
+  } catch { return { data: [], count: 0 }; }
+}
+
 export async function updateUserRole(user_id: string, role: 'owner'|'admin'|'manager'|'learner') {
   const { error } = await supabase.from('profiles').update({ role } as any).eq('user_id', user_id); if (error) throw error;
 }
@@ -92,6 +102,17 @@ export async function removeManager(team_id: string, manager_id: string){
 export async function fetchCourses(){
   const data = await safeSelect('courses','*');
   return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
+}
+
+export async function fetchAssetsPage(page=0, pageSize=30, search=''){ 
+  try {
+    let query = supabase.from('content_assets').select('*', { count:'exact' }).order('created_at',{ascending:false});
+    if (search) query = query.ilike('title', `%${search}%`);
+    const from = page*pageSize; const to = from + pageSize - 1;
+    const { data, error, count } = await query.range(from,to);
+    if (error) return { data: [], count: 0 };
+    return { data: data||[], count: count||0 };
+  } catch { return { data: [], count: 0 }; }
 }
 
 export async function fetchTeamAnalytics(){
