@@ -61,11 +61,19 @@ const navigationItems: NavigationItem[] = [
     icon: PlayCircle,
     roles: ['learner', 'manager', 'admin', 'owner']
   },
+  // Manager-only simplified team view
   {
     title: "Team View",
     href: "/team-view",
     icon: Users,
-    roles: ['manager', 'admin', 'owner']
+    roles: ['manager']
+  },
+  // Admin / Owner full management (inside admin dashboard)
+  {
+    title: "Team Management",
+    href: "/admin/teams",
+    icon: Users,
+    roles: ['admin','owner']
   },
   // Admin only items
   {
