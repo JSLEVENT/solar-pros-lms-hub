@@ -24,8 +24,15 @@ export const ContentRepository = () => {
   const [editing, setEditing] = useState<Asset | null>(null);
   const [uploading, setUploading] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [assetTags, setAssetTags] = useState<Record<string,string[]>>({});
+  const [preview, setPreview] = useState<Asset | null>(null);
 
   useEffect(() => { refreshAll(); }, []);
+  useEffect(()=> { const t = setTimeout(()=> setDebouncedSearch(search.trim().toLowerCase()), 300); return ()=> clearTimeout(t); }, [search]);
+  useEffect(()=> { fetchAssets(); }, [selectedFolder, debouncedSearch, activeTag]);
 
   const refreshAll = async () => {
     await Promise.all([fetchFolders(), fetchAssets(), fetchTags()]);
@@ -46,11 +53,25 @@ export const ContentRepository = () => {
   };
   const fetchAssets = async () => {
     try {
-  const query = (supabase as any).from('content_assets').select('*').order('created_at', { ascending: false });
-      if (selectedFolder) query.eq('folder_id', selectedFolder);
+      let query = (supabase as any).from('content_assets').select('*').order('created_at', { ascending: false });
+      if (selectedFolder) query = query.eq('folder_id', selectedFolder);
+      if (debouncedSearch) query = query.ilike('title', `%${debouncedSearch}%`);
       const { data, error } = await query;
       if (error) throw error;
-      setAssets(data || []);
+      const list = data || [];
+      setAssets(list);
+      if (list.length) {
+        const ids = list.map(a=> a.id);
+        const { data: tagMap } = await (supabase as any)
+          .from('content_asset_tags')
+          .select('asset_id, content_tags(name)')
+          .in('asset_id', ids);
+        const map: Record<string,string[]> = {};
+        (tagMap||[]).forEach((r:any)=> { map[r.asset_id] = map[r.asset_id] || []; if (r.content_tags?.name) map[r.asset_id].push(r.content_tags.name); });
+        setAssetTags(map);
+      } else {
+        setAssetTags({});
+      }
     } catch (e: any) {
       if (e.message?.includes('relation') || e.code === '42P01') {
         setAssets([]);
@@ -162,9 +183,10 @@ export const ContentRepository = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <h3 className="text-2xl font-semibold">Content Repository</h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <Input placeholder="Search assets" value={search} onChange={e=> setSearch(e.target.value)} className="w-56" />
           <Button variant="outline" onClick={refreshAll} size="sm"><RefreshCcw className="h-4 w-4 mr-1" />Refresh</Button>
         </div>
       </div>
@@ -190,11 +212,23 @@ export const ContentRepository = () => {
             <p className="text-xs text-muted-foreground">No folders or repository tables not migrated yet.</p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button variant={selectedFolder === null ? 'default' : 'outline'} size="sm" onClick={() => { setSelectedFolder(null); fetchAssets(); }}>All</Button>
-            {folders.map(f => (
-              <Button key={f.id} variant={selectedFolder === f.id ? 'default' : 'outline'} size="sm" onClick={() => { setSelectedFolder(f.id); fetchAssets(); }}>{f.name}</Button>
-            ))}
+            <Button variant={selectedFolder === null ? 'default' : 'outline'} size="sm" onClick={() => { setSelectedFolder(null); }}>All ({assets.length})</Button>
+            {folders.map(f => {
+              const count = assets.filter(a=> a.folder_id === f.id).length;
+              return (
+                <Button key={f.id} variant={selectedFolder === f.id ? 'default' : 'outline'} size="sm" onClick={() => { setSelectedFolder(f.id); }}>{f.name}{count? ` (${count})`:''}</Button>
+              );
+            })}
           </div>
+          {tags.length>0 && (
+            <div className="flex flex-wrap gap-1 pt-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Tags:</span>
+              <button onClick={()=> setActiveTag(null)} className={`text-[11px] px-2 py-0.5 rounded border ${!activeTag? 'bg-primary text-primary-foreground border-primary':'hover:bg-accent'}`}>All</button>
+              {tags.map(t=> (
+                <button key={t.id} onClick={()=> setActiveTag(activeTag===t.name? null : t.name)} className={`text-[11px] px-2 py-0.5 rounded border ${activeTag===t.name? 'bg-primary text-primary-foreground border-primary':'hover:bg-accent'}`}>{t.name}</button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             <Input placeholder="New folder name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} />
             <Button onClick={createFolder} disabled={!newFolderName || creatingFolder} size="sm"><FolderPlus className="h-4 w-4 mr-1" />Create</Button>
@@ -232,24 +266,29 @@ export const ContentRepository = () => {
           <ModernCardTitle>Assets {selectedFolder ? '(Filtered)' : ''}</ModernCardTitle>
         </ModernCardHeader>
         <ModernCardContent className="space-y-4">
-          {assets.length === 0 && <p className="text-sm text-muted-foreground">No assets yet.</p>}
+          {assets.filter(a=> !activeTag || (assetTags[a.id]||[]).includes(activeTag)).length === 0 && <p className="text-sm text-muted-foreground">No assets{debouncedSearch? ' matching search':''}{activeTag? ` with tag ${activeTag}`:''}.</p>}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assets.map(a => (
-              <div key={a.id} className="p-4 border rounded-xl space-y-2 group">
+            {assets.filter(a=> !activeTag || (assetTags[a.id]||[]).includes(activeTag)).map(a => (
+              <div key={a.id} className="p-4 border rounded-xl space-y-2 group cursor-pointer" onClick={()=> setPreview(a)}>
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
                     <p className="font-medium truncate" title={a.title}>{a.title}</p>
                     {a.description && <p className="text-xs text-muted-foreground line-clamp-2">{a.description}</p>}
+                    {assetTags[a.id] && assetTags[a.id].length>0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {assetTags[a.id].map(t=> <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground/90">{t}</span>)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1 items-end">
                     <Badge variant="outline" className="text-xs capitalize">{a.content_type || 'asset'}</Badge>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={()=> setEditing(a)} className="text-[10px] px-2 py-0.5 rounded border">Edit</button>
-                      <button onClick={()=> deleteAsset(a.id)} className="text-[10px] px-2 py-0.5 rounded border text-red-600">Del</button>
+                      <button onClick={(e)=> { e.stopPropagation(); setEditing(a); }} className="text-[10px] px-2 py-0.5 rounded border">Edit</button>
+                      <button onClick={(e)=> { e.stopPropagation(); deleteAsset(a.id); }} className="text-[10px] px-2 py-0.5 rounded border text-red-600">Del</button>
                     </div>
                   </div>
                 </div>
-                {a.external_url && <a className="text-xs text-primary underline" href={a.external_url} target="_blank" rel="noreferrer">Open Link</a>}
+                {a.external_url && <a className="text-xs text-primary underline" href={a.external_url} target="_blank" rel="noreferrer" onClick={e=> e.stopPropagation()}>Open Link</a>}
                 {a.file_path && <p className="text-xs text-muted-foreground">Stored: {a.file_path}</p>}
                 <p className="text-[11px] text-muted-foreground">Created {new Date(a.created_at).toLocaleDateString()}</p>
               </div>
@@ -278,6 +317,23 @@ export const ContentRepository = () => {
           )}
         </ModernCardContent>
       </ModernCard>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={()=> setPreview(null)}>
+          <div className="bg-background w-full max-w-lg rounded-xl shadow-xl p-6 space-y-4 relative" onClick={e=> e.stopPropagation()}>
+            <button className="absolute top-2 right-2 text-xs px-2 py-1 border rounded" onClick={()=> setPreview(null)}>Close</button>
+            <h4 className="text-lg font-semibold">{preview.title}</h4>
+            {preview.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{preview.description}</p>}
+            {assetTags[preview.id] && assetTags[preview.id].length>0 && (
+              <div className="flex flex-wrap gap-1">
+                {assetTags[preview.id].map(t=> <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-accent text-accent-foreground/90">{t}</span>)}
+              </div>
+            )}
+            {preview.external_url && <a href={preview.external_url} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Open External Resource</a>}
+            {preview.file_path && <p className="text-xs text-muted-foreground">Stored path: {preview.file_path}</p>}
+            <div className="text-xs text-muted-foreground">Created {new Date(preview.created_at).toLocaleString()}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
