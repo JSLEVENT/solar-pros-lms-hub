@@ -7,17 +7,22 @@ export async function checkAdminSchema() {
   const issues: string[] = [];
   for (const table of requiredTables) {
     // Head select to probe table existence
-    const probe = await supabase.from(table).select('*', { count: 'exact', head: true });
+  const probe = await supabase.from(table as any).select('*', { count: 'exact', head: true });
     if (probe.error) {
       // PostgREST returns 42P01 in error details for missing relation
       issues.push(`Missing table: ${table}`);
       continue;
     }
     if (optionalColumns[table]) {
-      const sample = await supabase.from(table).select('*').limit(1);
-      if (!sample.error && sample.data && sample.data.length) {
-        for (const col of optionalColumns[table]) {
-          if (!(col in sample.data[0])) issues.push(`Column ${table}.${col} not present`);
+      for (const col of optionalColumns[table]) {
+        // Execute a lightweight column existence probe by selecting the column only
+  const probeCol = await supabase.from(table as any).select(col as any).limit(1);
+        if (probeCol.error) {
+          // 42703 indicates column missing
+          const code = (probeCol.error as any).code;
+            if (code === '42703' || /column/i.test(probeCol.error.message)) {
+              issues.push(`Column ${table}.${col} not present`);
+            }
         }
       }
     }
