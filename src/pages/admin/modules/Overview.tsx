@@ -1,4 +1,5 @@
 import { useAdminStats } from '@/hooks/admin/useAdminStats';
+import { useSchemaIssues } from '@/hooks/admin/useSchemaIssues';
 import { BarChart3, Users, BookOpen, Award, TrendingUp, Layers } from 'lucide-react';
 
 const cards = [
@@ -12,9 +13,19 @@ const cards = [
 
 export function AdminOverview(){
   const { data, isLoading, isError } = useAdminStats();
+  const { data: issues } = useSchemaIssues();
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">Overview</h1>
+      {issues && issues.length>0 && (
+        <div className="rounded-lg border border-yellow-300/70 bg-yellow-50 dark:bg-yellow-950/20 p-4 text-xs space-y-2">
+          <p className="font-medium text-yellow-800 dark:text-yellow-200">Schema Issues Detected</p>
+          <ul className="list-disc pl-4 space-y-1 text-yellow-800 dark:text-yellow-200">
+            {issues.map(i=> <li key={i}>{i}</li>)}
+          </ul>
+          <p className="text-[10px] text-muted-foreground">Apply pending migrations (supabase db push) or run SQL manually, then this will clear.</p>
+        </div>
+      )}
       {isLoading && <p className="text-sm text-muted-foreground">Loading KPIs…</p>}
       {isError && <p className="text-sm text-red-600">Failed to load stats.</p>}
       {data && (

@@ -1,39 +1,59 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// Generic safe selector to gracefully handle missing tables/columns (42P01/42703)
+async function safeSelect(table: string, columns: string){
+  try {
+    const { data, error } = await supabase.from(table as any).select(columns as any);
+    if (error) {
+      if ((error as any).code === '42P01') return []; // missing relation
+      if ((error as any).code === '42703') {
+        // Column missing: fallback to select('*') minimal set
+        const retry = await supabase.from(table as any).select('*').limit(50);
+        if (retry.error) return [];
+        return retry.data || [];
+      }
+      // For 400 generic errors, attempt broad fallback once
+      if ((error as any).status === 400) {
+        const retry = await supabase.from(table as any).select('*').limit(50);
+        if (retry.error) return [];
+        return retry.data || [];
+      }
+      return [];
+    }
+    return data || [];
+  } catch { return []; }
+}
+
 export async function fetchAdminStats() {
-  const [usersRes, coursesRes, enrollmentsRes, certificatesRes, teamsRes, managersRes] = await Promise.all([
-    supabase.from('profiles').select('user_id,last_active_at'),
-    supabase.from('courses').select('id'),
-    supabase.from('enrollments').select('id,status'),
-    supabase.from('certificates').select('id'),
-    supabase.from('teams').select('id'),
-    supabase.from('profiles').select('id').eq('role','manager')
+  const [users, courses, enrollments, certificates, teams, managers] = await Promise.all([
+    safeSelect('profiles','user_id,last_active_at'),
+    safeSelect('courses','id'),
+    safeSelect('enrollments','id,status'),
+    safeSelect('certificates','id'),
+    safeSelect('teams','id'),
+    (async ()=> (await safeSelect('profiles','user_id,role')).filter((r:any)=> r.role==='manager'))()
   ]);
 
-  const error = usersRes.error || coursesRes.error || enrollmentsRes.error || certificatesRes.error || teamsRes.error || managersRes.error;
-  if (error) throw error;
-
-  const totalEnrollments = enrollmentsRes.data?.length || 0;
-  const completed = (enrollmentsRes.data||[]).filter(e=>e.status==='completed').length;
+  const totalEnrollments = enrollments.length;
+  const completed = enrollments.filter((e:any)=> e.status==='completed').length;
   const completionRate = totalEnrollments ? (completed/totalEnrollments)*100 : 0;
-  const activeUsers = (usersRes.data||[]).filter((u: any) => u.last_active_at && new Date(u.last_active_at) > new Date(Date.now()-7*24*60*60*1000)).length;
+  const activeUsers = users.filter((u: any) => u.last_active_at && new Date(u.last_active_at) > new Date(Date.now()-7*24*60*60*1000)).length;
 
   return {
-  totalUsers: usersRes.data?.length||0,
-    totalCourses: coursesRes.data?.length||0,
+    totalUsers: users.length,
+    totalCourses: courses.length,
     totalEnrollments,
-    totalCertificates: certificatesRes.data?.length||0,
+    totalCertificates: certificates.length,
     completionRate,
     activeUsers,
-    totalTeams: teamsRes.data?.length||0,
-    totalManagers: managersRes.data?.length||0
+    totalTeams: teams.length,
+    totalManagers: managers.length
   };
 }
 
 export async function fetchUsers() {
-  // Explicit columns to avoid selecting non-existent 'id' and reduce payload
-  const { data, error } = await supabase.from('profiles').select('user_id, full_name, role, last_active_at, is_active, created_at').order('created_at',{ascending:false});
-  if (error) throw error; return data || [];
+  const data = await safeSelect('profiles','user_id, full_name, role, last_active_at, is_active, created_at');
+  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
 }
 
 export async function updateUserRole(user_id: string, role: 'owner'|'admin'|'manager'|'learner') {
@@ -52,8 +72,8 @@ export async function inviteUser(payload: { email:string; full_name?:string; rol
 
 export async function fetchTeams(includeArchived = true){
   const cols = includeArchived ? 'id,name,description,is_archived,team_memberships(count),manager_teams(manager_id)' : 'id,name,description,team_memberships(count),manager_teams(manager_id)';
-  const { data, error } = await supabase.from('teams').select(cols).order('created_at',{ascending:false});
-  if (error) throw error; return data||[];
+  const data = await safeSelect('teams', cols);
+  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
 }
 
 export async function toggleTeamArchived(id: string, next: boolean){
@@ -70,27 +90,23 @@ export async function removeManager(team_id: string, manager_id: string){
 }
 
 export async function fetchCourses(){
-  const { data, error } = await supabase.from('courses').select('*').order('created_at',{ascending:false});
-  if (error) throw error; return data||[];
+  const data = await safeSelect('courses','*');
+  return (data||[]).sort((a:any,b:any)=> (b.created_at||'').localeCompare(a.created_at||''));
 }
 
 export async function fetchTeamAnalytics(){
-  const { data, error } = await supabase.from('team_analytics').select('*').order('member_count',{ascending:false});
-  if (error) throw error; return data||[];
+  const data = await safeSelect('team_analytics','*');
+  return (data||[]).sort((a:any,b:any)=> (b.member_count||0)-(a.member_count||0));
 }
 
 // Analytics detail queries
 export async function fetchActiveUsersTimeSeries(days = 30){
-  // Assuming profiles.last_active_at exists; bucket per day
   const since = new Date(Date.now() - days*24*60*60*1000).toISOString();
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('last_active_at')
-    .gte('last_active_at', since);
-  if (error) throw error;
+  const data = await safeSelect('profiles','last_active_at');
   const buckets: Record<string, number> = {};
   (data||[]).forEach((r: any)=>{
     if(!r.last_active_at) return;
+    if(r.last_active_at < since) return;
     const d = new Date(r.last_active_at);
     const key = d.toISOString().slice(0,10);
     buckets[key] = (buckets[key]||0)+1;
