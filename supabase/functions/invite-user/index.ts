@@ -1,8 +1,15 @@
 // Edge Function: invite-user
 // Invites a user by email and sets initial profile (full_name, role)
 // Security: only admins/owners may call (verified via JWT and profiles.role)
+// deno-lint-ignore-file
+// @ts-nocheck
+// The below references help local editors; Supabase deploy uses Deno runtime with these available.
+/// <reference lib="deno.unstable" />
+/// <reference lib="dom" />
 
+// @ts-ignore remote import for Deno deploy
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+// @ts-ignore remote import for Deno deploy
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type AppRole = 'owner' | 'admin' | 'manager' | 'learner'
