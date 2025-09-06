@@ -6,21 +6,23 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Profile {
   user_id: string;
   full_name: string | null;
-  display_name: string | null;
-  job_title: string | null;
+  // The following fields may not exist yet in the current DB row; mark optional
+  display_name?: string | null;
+  job_title?: string | null;
   avatar_url: string | null;
   role: string;
-  time_zone: string | null;
-  locale: string | null;
-  bio: string | null;
-  preferences: any;
-  last_active_at: string | null;
-  first_login_at: string | null;
-  last_login_at: string | null;
-  login_count: number;
-  total_learning_seconds: number;
+  time_zone?: string | null;
+  locale?: string | null;
+  bio?: string | null;
+  preferences?: any;
+  last_active_at?: string | null;
+  first_login_at?: string | null;
+  last_login_at?: string | null;
+  login_count?: number;
+  total_learning_seconds?: number;
   created_at: string;
   updated_at: string;
+  organization_id?: string | null;
 }
 
 interface AuthContextType {
@@ -57,21 +59,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  let profileFetchLogged = false;
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+  const { data, error, status } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
-      
+
       if (error) {
-        console.error('Error fetching profile:', error);
+        // Gracefully handle common bootstrap issues (400 when RLS blocks or no row yet)
+        if (!profileFetchLogged) {
+          profileFetchLogged = true;
+          console.warn('[auth] profile fetch issue', { status, message: error.message, code: (error as any).code });
+        }
         return null;
       }
-      return data;
-    } catch (error) {
-      console.error('Error fetching profile:', error);
+      if (!data) return null;
+      // Normalize shape with safe defaults to satisfy UI expectations
+      const normalized: Profile = {
+        user_id: data.user_id,
+        full_name: data.full_name,
+        avatar_url: data.avatar_url,
+        role: data.role as string,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        organization_id: (data as any).organization_id ?? null,
+        display_name: (data as any).display_name ?? null,
+        job_title: (data as any).job_title ?? null,
+        time_zone: (data as any).time_zone ?? null,
+        locale: (data as any).locale ?? null,
+        bio: (data as any).bio ?? null,
+        preferences: (data as any).preferences ?? {},
+        last_active_at: (data as any).last_active_at ?? null,
+        first_login_at: (data as any).first_login_at ?? null,
+        last_login_at: (data as any).last_login_at ?? null,
+        login_count: (data as any).login_count ?? 0,
+        total_learning_seconds: (data as any).total_learning_seconds ?? 0,
+      };
+      return normalized;
+    } catch (error: any) {
+      if (!profileFetchLogged) {
+        profileFetchLogged = true;
+        console.warn('[auth] unexpected profile fetch exception', { message: error?.message });
+      }
       return null;
     }
   };
