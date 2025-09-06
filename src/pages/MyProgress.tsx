@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LMSLayout } from '@/components/LMSLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,8 @@ interface ProgressData {
   totalStudyTime: number;
   currentStreak: number;
   weeklyGoal: number;
-  monthlyStats: any[];
   categoryProgress: any[];
+  studyTimeEntries?: any[];
 }
 
 export default function MyProgress() {
@@ -37,6 +37,10 @@ export default function MyProgress() {
 
   const fetchProgressData = async () => {
     try {
+      const now = new Date();
+      const rangeDays: Record<string, number> = { '7d':7, '30d':30, '90d':90, '1y':365 };
+      const days = rangeDays[timeRange] || 30;
+      const start = new Date(now.getTime() - days*24*60*60*1000).toISOString();
       const [enrollmentsRes, assessmentsRes, certificatesRes] = await Promise.all([
         supabase
           .from('enrollments')
@@ -48,7 +52,8 @@ export default function MyProgress() {
               duration
             )
           `)
-          .eq('user_id', user?.id),
+          .eq('user_id', user?.id)
+          .gte('created_at', start),
         
         supabase
           .from('assessment_results')
@@ -64,6 +69,7 @@ export default function MyProgress() {
             )
           `)
           .eq('user_id', user?.id)
+          .gte('completed_at', start)
           .order('completed_at', { ascending: false }),
         
         supabase
@@ -76,6 +82,7 @@ export default function MyProgress() {
             )
           `)
           .eq('user_id', user?.id)
+          .gte('issued_at', start)
       ]);
 
       if (enrollmentsRes.error) throw enrollmentsRes.error;
@@ -108,25 +115,26 @@ export default function MyProgress() {
         completionRate: Math.round((stats.completed / stats.total) * 100)
       }));
 
-      // Mock monthly stats for chart
-      const monthlyStats = [
-        { month: 'Jan', coursesCompleted: 2, avgScore: 85, studyHours: 24 },
-        { month: 'Feb', coursesCompleted: 1, avgScore: 92, studyHours: 18 },
-        { month: 'Mar', coursesCompleted: 3, avgScore: 88, studyHours: 32 },
-        { month: 'Apr', coursesCompleted: 2, avgScore: 91, studyHours: 28 },
-        { month: 'May', coursesCompleted: 4, avgScore: 87, studyHours: 35 },
-        { month: 'Jun', coursesCompleted: 1, avgScore: 94, studyHours: 22 }
-      ];
+      let studyTimeEntries: any[] | undefined;
+      try {
+        // Cast supabase to any to attempt querying optional table without type error if not generated
+        const stRes = await (supabase as any)
+          .from('study_time_entries')
+          .select('*')
+          .eq('user_id', user?.id)
+          .gte('started_at', start);
+        if (!stRes.error) studyTimeEntries = stRes.data || [];
+      } catch {}
 
       setProgressData({
         enrollments,
         assessmentResults,
         certificates,
-        totalStudyTime: 156, // Mock data
-        currentStreak: 7, // Mock data
-        weeklyGoal: 10, // Mock data
-        monthlyStats,
-        categoryProgress
+        totalStudyTime: 156,
+        currentStreak: 7,
+        weeklyGoal: 10,
+        categoryProgress,
+        studyTimeEntries
       });
     } catch (error) {
       console.error('Error fetching progress data:', error);
@@ -170,6 +178,48 @@ export default function MyProgress() {
     : 0;
 
   const COLORS = ['#DC2626', '#EA580C', '#D97706', '#CA8A04', '#65A30D'];
+
+  const monthlyStats = useMemo(() => {
+    if (!progressData) return [];
+    const monthKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+    const label = (d: Date) => d.toLocaleString(undefined, { month: 'short' });
+    const buckets: Record<string, { date: Date; coursesCompleted: number; scoreSum: number; scoreCount: number; minutes: number; }> = {};
+    const ensure = (d: Date) => {
+      const k = monthKey(d);
+      if (!buckets[k]) buckets[k] = { date: new Date(d.getFullYear(), d.getMonth(), 1), coursesCompleted: 0, scoreSum: 0, scoreCount: 0, minutes: 0 };
+      return buckets[k];
+    };
+    progressData.enrollments.forEach(e => {
+      if (e.status === 'completed') {
+        const ds = e.completed_at || e.updated_at || e.created_at; if (!ds) return;
+        const d = new Date(ds); ensure(d).coursesCompleted += 1;
+      }
+    });
+    progressData.assessmentResults.forEach(r => {
+      const ds = r.completed_at || r.created_at; if (!ds) return;
+      const d = new Date(ds); const b = ensure(d); b.scoreSum += r.score || 0; b.scoreCount += 1;
+    });
+    progressData.studyTimeEntries?.forEach(s => {
+      const ds = s.started_at || s.created_at; if (!ds) return;
+      const d = new Date(ds); const b = ensure(d);
+      if (typeof s.duration_minutes === 'number') b.minutes += s.duration_minutes;
+      else if (typeof s.duration_seconds === 'number') b.minutes += s.duration_seconds / 60;
+    });
+    const rangeDays: Record<string, number> = { '7d':7, '30d':30, '90d':90, '1y':365 };
+    const days = rangeDays[timeRange] || 30;
+    const cutoff = new Date(Date.now() - days*24*60*60*1000);
+    return Object.values(buckets)
+      .filter(b => b.date >= new Date(cutoff.getFullYear(), cutoff.getMonth(), 1))
+      .sort((a,b) => a.date.getTime() - b.date.getTime())
+      .map(b => ({
+        month: label(b.date),
+        coursesCompleted: b.coursesCompleted,
+        avgScore: b.scoreCount ? Math.round(b.scoreSum / b.scoreCount) : 0,
+        studyHours: Math.round((b.minutes/60)*10)/10,
+      }));
+  }, [progressData, timeRange]);
+
+  const categoryProgressMemo = useMemo(() => progressData?.categoryProgress || [], [progressData]);
 
   return (
     <LMSLayout>
@@ -252,6 +302,12 @@ export default function MyProgress() {
         </div>
 
         {/* Main Content */}
+        {/* Time range toggle */}
+        <div className="flex flex-wrap gap-2">
+          {['7d','30d','90d','1y'].map(r => (
+            <Button key={r} size="sm" variant={timeRange === r ? 'default' : 'outline'} onClick={() => setTimeRange(r)}>{r.toUpperCase()}</Button>
+          ))}
+        </div>
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -269,7 +325,7 @@ export default function MyProgress() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={progressData.monthlyStats}>
+                    <LineChart data={monthlyStats}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
@@ -302,7 +358,7 @@ export default function MyProgress() {
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={progressData.categoryProgress}
+                        data={categoryProgressMemo}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -311,7 +367,7 @@ export default function MyProgress() {
                         fill="#8884d8"
                         dataKey="completionRate"
                       >
-                        {progressData.categoryProgress.map((entry, index) => (
+                        {categoryProgressMemo.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
