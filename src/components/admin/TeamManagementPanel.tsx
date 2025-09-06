@@ -2,18 +2,23 @@ import { useTeams } from '@/hooks/admin/useTeams';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Layers, Trash2 } from 'lucide-react';
+import { Layers, Trash2, Plus } from 'lucide-react';
 import { assignManager, removeManager, toggleTeamArchived, exportTeamMembers, downloadCSV } from '@/lib/admin/queries';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
 export function TeamManagementPanel(){
-  const { teams, analytics } = useTeams();
+  const { teams, analytics, createMutation } = useTeams();
   const { toast } = useToast();
   const [managers, setManagers] = useState<{ user_id:string; full_name:string|null }[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTeam, setNewTeam] = useState({ name:'', description:'' });
 
   useEffect(()=>{ (async ()=>{ const { data } = await supabase.from('profiles').select('user_id,full_name').eq('role','manager'); setManagers(data||[]); })(); },[]);
 
@@ -22,9 +27,52 @@ export function TeamManagementPanel(){
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">Team Management</h2>
-        <Button asChild variant="outline"><Link to="/admin/teams">Open Full Manager</Link></Button>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-2xl font-semibold flex items-center gap-2"><Layers className="h-5 w-5"/>Team Management</h2>
+        <div className="flex gap-2">
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" /> Create Team
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Team</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Name</label>
+                  <Input
+                    placeholder="Team name"
+                    value={newTeam.name}
+                    onChange={e=> setNewTeam(t=> ({...t, name:e.target.value}))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    placeholder="Optional description"
+                    value={newTeam.description}
+                    onChange={e=> setNewTeam(t=> ({...t, description:e.target.value}))}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={!newTeam.name.trim() || createMutation.isPending}
+                  onClick={()=> {
+                    if(!newTeam.name.trim()) return;
+                    createMutation.mutate({ name:newTeam.name.trim(), description:newTeam.description.trim() }, {
+                      onSuccess: ()=> { toast({ title:'Team created'}); setNewTeam({name:'',description:''}); setCreateOpen(false); },
+                      onError: (e:any)=> toast({ title:'Failed to create team', description:e.message, variant:'destructive' })
+                    });
+                  }}
+                >{createMutation.isPending? 'Creating...' : 'Create Team'}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button asChild variant="outline" size="sm"><Link to="/admin/teams">Open Full Manager</Link></Button>
+        </div>
       </div>
       <ModernCard variant="glass">
         <ModernCardContent className="p-6 space-y-4">
