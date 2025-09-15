@@ -2,7 +2,7 @@ import { useTeams } from '@/hooks/admin/useTeams';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Layers, Trash2, Plus } from 'lucide-react';
+import { Layers, Trash2, Plus, Pencil } from 'lucide-react';
 import { assignManager, removeManager, toggleTeamArchived, exportTeamMembers, downloadCSV } from '@/lib/admin/queries';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
@@ -14,11 +14,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
 export function TeamManagementPanel(){
-  const { teams, analytics, createMutation } = useTeams();
+  const { teams, analytics, createMutation, updateMutation } = useTeams();
   const { toast } = useToast();
   const [managers, setManagers] = useState<{ user_id:string; full_name:string|null }[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [newTeam, setNewTeam] = useState({ name:'', description:'' });
+  const [editOpen, setEditOpen] = useState<string|null>(null);
+  const [editDraft, setEditDraft] = useState<Record<string,{name:string; description:string}>>({});
 
   useEffect(()=>{ (async ()=>{ const { data } = await supabase.from('profiles').select('user_id,full_name').eq('role','manager'); setManagers(data||[]); })(); },[]);
 
@@ -90,9 +92,41 @@ export function TeamManagementPanel(){
                       className={`text-xs px-2 py-0.5 rounded border ${t.is_archived? 'bg-gray-300 text-gray-700':'bg-amber-600 text-white border-amber-600'}`}
                     >{t.is_archived? 'Archived':'Active'}</button>
                     <Button variant="outline" size="sm" className="h-6" onClick={()=> exportMembers(t.id)}>CSV</Button>
+                    <Button variant="outline" size="sm" className="h-6" onClick={()=> { setEditDraft(d=> ({...d, [t.id]: { name: t.name, description: t.description||'' }})); setEditOpen(t.id); }}><Pencil className="h-3 w-3 mr-1"/>Edit</Button>
                   </div>
                 </div>
               </div>
+              <Dialog open={editOpen===t.id} onOpenChange={(o)=> { if(!o) setEditOpen(null); }}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Team</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Name</label>
+                      <Input value={editDraft[t.id]?.name||''} onChange={e=> setEditDraft(d=> ({...d, [t.id]: { ...(d[t.id]||{name:'',description:''}), name:e.target.value }}))} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Description</label>
+                      <Textarea value={editDraft[t.id]?.description||''} onChange={e=> setEditDraft(d=> ({...d, [t.id]: { ...(d[t.id]||{name:'',description:''}), description:e.target.value }}))} />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={()=> setEditOpen(null)}>Cancel</Button>
+                      <Button
+                        onClick={()=> {
+                          const draft = editDraft[t.id]||{ name:'', description:'' };
+                          // Optimistic update handled in hook's updateMutation
+                          updateMutation.mutate({ id: t.id, name: draft.name, description: draft.description }, {
+                            onSuccess: ()=> { toast({ title:'Team updated' }); setEditOpen(null); },
+                            onError: (e:any)=> toast({ title:'Update failed', description: e.message, variant:'destructive' })
+                          });
+                        }}
+                        disabled={!editDraft[t.id]?.name?.trim() || updateMutation.isPending}
+                      >{updateMutation.isPending? 'Saving...':'Save'}</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <div className="mt-3 space-y-2">
                 <p className="text-xs text-muted-foreground">Assign Manager</p>
                 <Select onValueChange={val=> assignManager(t.id, val).then(()=> teams.refetch())}>
