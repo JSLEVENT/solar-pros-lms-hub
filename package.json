@@ -8,7 +8,12 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+  "preview": "vite preview",
+  "supabase:login": "supabase login",
+  "supabase:link": "supabase link --project-ref byaqdyqqwmkgeypvmxgq",
+  "supabase:secrets": "supabase secrets set --env-file .env.functions",
+  "supabase:serve": "supabase functions serve --env-file .env.functions",
+  "supabase:deploy": "supabase functions deploy create-user invite-user bulk-import-users"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

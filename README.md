@@ -71,3 +71,32 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Deploy edge functions (Supabase)
+
+Prereqs: Supabase CLI installed, logged in, and linked to project `byaqdyqqwmkgeypvmxgq`.
+
+1) Copy `.env.functions.example` to `.env.functions` and fill with your Supabase URL, anon key, and service role key.
+2) Login and link project (one time):
+
+	npm run supabase:login
+	npm run supabase:link
+
+3) Set function secrets in the project from the local file:
+
+	npm run supabase:secrets
+
+4) Deploy functions:
+
+	npm run supabase:deploy
+
+Optional: run functions locally with your secrets
+
+	npm run supabase:serve
+
+Functions included:
+- create-user
+- invite-user
+- bulk-import-users
+
+After deploy, test from the Admin > Users page: create/invite users and CSV import. If updates fail due to RLS, ensure the admin role policies in migrations have been applied to your database.
