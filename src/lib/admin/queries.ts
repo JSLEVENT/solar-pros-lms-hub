@@ -125,7 +125,36 @@ export async function inviteUser(payload: { email:string; full_name?:string; rol
 
 export async function createUserDirect(payload: { email:string; first_name?:string; last_name?:string; mobile_number?:string; role:'owner'|'admin'|'manager'|'learner'; team_id?: string }){
   const { data, error } = await supabase.functions.invoke('create-user', { body: payload });
-  if (error) throw error; return data;
+  if (!error) return data;
+  // Edge function failed: fall back to client-side creation using service role not available here.
+  // Provide structured error so caller can decide to show message or attempt alternative flow.
+  throw error;
+}
+
+// Fallback (optional) local creation helper to be called if edge route persistently fails.
+// This expects that the logged-in admin has privileges (RLS) to insert into profiles after auth sign-up.
+export async function createUserFallbackLocal(payload: { email:string; first_name?:string; last_name?:string; mobile_number?:string; role:'owner'|'admin'|'manager'|'learner'; team_id?: string }){
+  // 1. Sign up user (will send confirmation email unless disabled). We can't set password silently without service role; so we invite instead.
+  const { data: sign, error: signErr } = await (supabase.auth as any).signUp({ email: payload.email });
+  if (signErr) throw signErr;
+  const newId = sign.user?.id;
+  if (!newId) throw new Error('No user id returned');
+  const full_name = [payload.first_name||'', payload.last_name||''].filter(Boolean).join(' ').trim() || null;
+  const base:any = { user_id: newId, role: payload.role };
+  if (full_name) base.full_name = full_name;
+  if (payload.first_name) base.first_name = payload.first_name;
+  if (payload.last_name) base.last_name = payload.last_name;
+  if (payload.mobile_number) base.preferences = { mobile_number: payload.mobile_number };
+  try {
+    await supabase.from('profiles').insert(base as any);
+  } catch (_) {
+    // Try minimal
+    await supabase.from('profiles').insert({ user_id: newId, role: payload.role, full_name } as any);
+  }
+  if (payload.team_id) {
+    try { await supabase.from('team_memberships').insert({ team_id: payload.team_id, user_id: newId } as any); } catch { /* ignore */ }
+  }
+  return { user_id: newId, fallback: true };
 }
 
 export async function fetchTeamsForDropdown(){
