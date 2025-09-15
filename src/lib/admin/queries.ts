@@ -79,47 +79,26 @@ export async function fetchAdminStats() {
 export type AdminStats = Awaited<ReturnType<typeof fetchAdminStats>>;
 
 export async function fetchUsers() {
-  try {
-    const cols = ['user_id','full_name','role','last_active_at','created_at'];
-    const optional = ['is_active'];
-    const present = [...cols];
-    for (const c of optional) {
-      const probe = await supabase.from('profiles' as any).select(c as any, { head: true, count: 'exact' });
-      if (!probe.error || (probe.error as any)?.status !== 400) present.push(c);
-    }
-    const sel = present.join(', ');
-    const { data, error } = await (supabase as any).from('profiles' as any).select(sel as any).order('created_at',{ascending:false});
-    if (error) throw error;
-    return sortByCreated((data||[]) as any[]);
-  } catch {
-    const fallback = await safeSelect('profiles','*');
-    return sortByCreated(fallback as any[]);
-  }
+  // Use '*' to avoid undefined column 400s across environments
+  const fallback = await safeSelect('profiles','*');
+  return sortByCreated(fallback as any[]);
 }
 
 export async function fetchUsersPage(page=0, pageSize=25){
   const from = page*pageSize;
   const to = from + pageSize - 1;
   try {
-    // Probe optional columns to avoid 400s on environments lacking them
-    const cols: string[] = ['user_id','full_name','first_name','last_name','role','last_active_at','created_at'];
-    const optCols: string[] = ['mobile_number','preferences','is_active'];
-    const present: string[] = [...cols];
-    for (const c of optCols) {
-      const probe = await supabase.from('profiles' as any).select(c as any, { head: true, count: 'exact' });
-      if (!probe.error || (probe.error as any)?.status !== 400) present.push(c);
-    }
-    const selectExpr = present.join(', ');
+    // '*' avoids undefined column errors while still allowing count/range
     const { data, error, count } = await (supabase as any)
       .from('profiles' as any)
-      .select(selectExpr as any, { count:'exact' } as any)
+      .select('*', { count:'exact' } as any)
       .order('created_at',{ascending:false})
       .range(from,to);
     if (error) throw error;
     const enriched = (data||[]).map((r:any)=> ({ ...r, mobile_number: r.mobile_number ?? r.preferences?.mobile_number ?? null }));
     return { data: synthesizeNames(enriched), count: count||0 };
   } catch (e:any) {
-    // Resilient fallback: select * then slice locally to avoid 400s from missing columns
+    // Resilient fallback: select * via safeSelect then slice locally
     try {
       const all = await safeSelect('profiles','*');
       const sorted = sortByCreated(all as any[]) as any[];
@@ -236,31 +215,21 @@ export async function fetchTeamsPage(params:{ page:number; pageSize:number; sear
   try {
     const from = page * pageSize;
     const to = from + pageSize - 1;
-    // Probe is_archived optional column to avoid 400s
-    let selectCols = 'id,name,description,created_at,team_memberships(count),manager_teams(manager_id)';
-    const probe = await supabase.from('teams' as any).select('is_archived' as any, { head: true, count: 'exact' });
-    if (!probe.error || (probe.error as any)?.status !== 400) {
-      selectCols = 'id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)';
-    }
-    let query: any = (supabase as any).from('teams' as any).select(selectCols as any, { count:'exact' } as any);
-    if(!includeArchived){ query = query.eq('is_archived', false); }
+    // Use '*' for base table to avoid undefined column errors; nested counts remain explicit
+    let query: any = (supabase as any)
+      .from('teams' as any)
+      .select('*,team_memberships(count),manager_teams(manager_id)' as any, { count:'exact' } as any);
+    // Avoid applying is_archived filter which may not exist; client can ignore archived if field missing
     if(search){ query = query.ilike('name', `%${search}%`); }
     query = query.order('created_at',{ ascending:false }).range(from,to);
     const { data, error, count } = await query;
     if(error) throw error;
-    return { data: data||[], count: count||0 };
+    // If includeArchived=false and column exists, filter client-side
+    const rows = (data||[]) as any[];
+    const filtered = includeArchived ? rows : rows.filter(r=> r.is_archived !== true);
+    return { data: filtered, count: includeArchived ? (count||0) : filtered.length };
   } catch {
-    // Fallback for older schema without is_archived
-    try {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
-      let query: any = supabase.from('teams').select('id,name,description,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
-      if(search){ query = query.ilike('name', `%${search}%`); }
-      query = query.order('created_at',{ ascending:false }).range(from,to);
-      const { data, error, count } = await query;
-      if (error) throw error;
-      return { data: data||[], count: count||0 };
-    } catch { return { data: [], count: 0 }; }
+    return { data: [], count: 0 };
   }
 }
 
@@ -268,7 +237,7 @@ export async function fetchTeamDetail(id: string){
   try {
     const { data: raw, error } = await supabase
       .from('teams')
-      .select('id,name,description,is_archived,created_at,manager_teams(manager_id),team_memberships(user_id)')
+      .select('*,manager_teams(manager_id),team_memberships(user_id)')
       .eq('id', id)
       .single();
     if (error || !raw) throw error || new Error('Not found');

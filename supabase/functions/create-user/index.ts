@@ -107,25 +107,26 @@ serve(async (req) => {
     // If mobile_number couldn't be stored due to missing column, persist into preferences.mobile_number (best-effort)
     if (mobile_number) {
       try {
-  const { data: prefRow } = await adminClient.from('profiles').select('preferences').eq(idKey, newUserId).maybeSingle();
+        const { data: prefRow } = await adminClient.from('profiles').select('preferences').eq(idKey, newUserId).maybeSingle();
         const prefs = prefRow && typeof (prefRow as any).preferences === 'object' ? (prefRow as any).preferences : {};
         if (!prefs.mobile_number) {
           const nextPrefs = { ...prefs, mobile_number };
-          await adminClient.from('profiles').update({ preferences: nextPrefs } as any).eq('user_id', newUserId);
+          await adminClient.from('profiles').update({ preferences: nextPrefs } as any).eq(idKey, newUserId);
         }
       } catch (_) { /* ignore */ }
     }
 
     // Optional team membership
+    let teamWarning: string | undefined;
     if (team_id && String(team_id).trim().length > 0) {
       const { error: tmErr } = await adminClient.from('team_memberships').insert({ team_id, user_id: newUserId });
       if (tmErr && (tmErr as any).code !== '23505') {
-        // Hard fail to surface configuration issues like missing team or constraints
-        return new Response(JSON.stringify({ error: `team assignment failed: ${tmErr.message||'unknown'}`, user_id: newUserId }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+        // Non-fatal: surface as warning but keep user creation successful
+        teamWarning = `team assignment failed: ${tmErr.message||'unknown'}`;
       }
     }
 
-    return new Response(JSON.stringify({ success: true, user_id: newUserId }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    return new Response(JSON.stringify({ success: true, user_id: newUserId, warning: teamWarning }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: 'Server error' }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
