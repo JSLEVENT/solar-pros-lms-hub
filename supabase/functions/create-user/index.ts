@@ -53,28 +53,55 @@ serve(async (req) => {
     if (!newUserId) return new Response(JSON.stringify({ error: 'Failed to create user id' }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
     const full_name = [first_name||'', last_name||''].filter(Boolean).join(' ').trim() || null;
-    const profilePayload: Record<string, any> = { user_id: newUserId, role };
-    if (full_name) profilePayload.full_name = full_name;
-    if (first_name) profilePayload.first_name = first_name;
-    if (last_name) profilePayload.last_name = last_name;
-    if (mobile_number) profilePayload.mobile_number = mobile_number;
+    // Try with extended columns first
+    const baseProfile: Record<string, any> = { user_id: newUserId, role };
+    if (full_name) baseProfile.full_name = full_name;
+    // Prefer is_active true so user lists include them immediately if filtered
+    baseProfile.is_active = true;
+    if (first_name) baseProfile.first_name = first_name;
+    if (last_name) baseProfile.last_name = last_name;
+    if (mobile_number) baseProfile.mobile_number = mobile_number;
 
-    // Upsert profile with safe fallback if some columns are missing
-    const upsert = async (payload: Record<string, any>) => {
-      const { error } = await adminClient.from('profiles').upsert(payload, { onConflict: 'user_id' });
-      return error;
-    };
-    let upErr = await upsert(profilePayload);
-    if (upErr && (upErr as any).code === '42703') {
-      // Column missing; retry with minimal set
-      upErr = await upsert({ user_id: newUserId, role, full_name });
+    // Progressive fallback upsert to tolerate column drift
+    const upsertProfile = async (payload: Record<string, any>) => adminClient.from('profiles').upsert(payload, { onConflict: 'user_id' });
+
+    let upErr: any = null;
+    {
+      const { error } = await upsertProfile(baseProfile);
+      upErr = error;
+    }
+    if (upErr && upErr.code === '42703') {
+      // Remove potentially missing columns and retry
+      const { error } = await upsertProfile({ user_id: newUserId, role, full_name, is_active: true } as any);
+      upErr = error;
+    }
+    if (upErr && upErr.code === '42703') {
+      // Minimal fallback
+      const { error } = await upsertProfile({ user_id: newUserId, role, full_name } as any);
+      upErr = error;
+    }
+    if (upErr) {
+      return new Response(JSON.stringify({ error: `profile upsert failed: ${upErr.message||'unknown'}` }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
+    // If mobile_number couldn't be stored due to missing column, persist into preferences.mobile_number (best-effort)
+    if (mobile_number) {
+      try {
+        const { data: prefRow } = await adminClient.from('profiles').select('preferences').eq('user_id', newUserId).maybeSingle();
+        const prefs = prefRow && typeof (prefRow as any).preferences === 'object' ? (prefRow as any).preferences : {};
+        if (!prefs.mobile_number) {
+          const nextPrefs = { ...prefs, mobile_number };
+          await adminClient.from('profiles').update({ preferences: nextPrefs } as any).eq('user_id', newUserId);
+        }
+      } catch (_) { /* ignore */ }
     }
 
     // Optional team membership
-    if (team_id) {
+    if (team_id && String(team_id).trim().length > 0) {
       const { error: tmErr } = await adminClient.from('team_memberships').insert({ team_id, user_id: newUserId });
       if (tmErr && (tmErr as any).code !== '23505') {
-        console.warn('team_memberships insert error', tmErr);
+        // Hard fail to surface configuration issues like missing team or constraints
+        return new Response(JSON.stringify({ error: `team assignment failed: ${tmErr.message||'unknown'}`, user_id: newUserId }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
       }
     }
 
