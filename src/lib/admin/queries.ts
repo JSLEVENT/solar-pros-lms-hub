@@ -67,13 +67,28 @@ export async function fetchUsers() {
 }
 
 export async function fetchUsersPage(page=0, pageSize=25){
+  const from = page*pageSize;
+  const to = from + pageSize - 1;
   try {
-    const from = page*pageSize;
-    const to = from + pageSize - 1;
-    const { data, error, count } = await supabase.from('profiles').select('user_id, full_name, role, last_active_at, is_active, created_at', { count:'exact' }).order('created_at',{ascending:false}).range(from,to);
-    if (error) return { data: [], count: 0 };
+    const { data, error, count } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, role, last_active_at, is_active, created_at', { count:'exact' })
+      .order('created_at',{ascending:false})
+      .range(from,to);
+    if (error) throw error;
     return { data: data||[], count: count||0 };
-  } catch { return { data: [], count: 0 }; }
+  } catch (e:any) {
+    // Fallback for older schema without is_active
+    try {
+      const { data, error, count } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role, last_active_at, created_at', { count:'exact' })
+        .order('created_at',{ascending:false})
+        .range(from,to);
+      if (error) throw error;
+      return { data: data||[], count: count||0 };
+    } catch { return { data: [], count: 0 }; }
+  }
 }
 
 export async function updateUserRole(user_id: string, role: 'owner'|'admin'|'manager'|'learner') {
@@ -107,14 +122,26 @@ export async function fetchTeamsPage(params:{ page:number; pageSize:number; sear
   try {
     const from = page * pageSize;
     const to = from + pageSize - 1;
-  let query: any = supabase.from('teams').select('id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
+    let query: any = supabase.from('teams').select('id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
     if(!includeArchived){ query = query.eq('is_archived', false); }
     if(search){ query = query.ilike('name', `%${search}%`); }
     query = query.order('created_at',{ ascending:false }).range(from,to);
     const { data, error, count } = await query;
-    if(error) return { data: [], count: 0 };
+    if(error) throw error;
     return { data: data||[], count: count||0 };
-  } catch { return { data: [], count: 0 }; }
+  } catch {
+    // Fallback for older schema without is_archived
+    try {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      let query: any = supabase.from('teams').select('id,name,description,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
+      if(search){ query = query.ilike('name', `%${search}%`); }
+      query = query.order('created_at',{ ascending:false }).range(from,to);
+      const { data, error, count } = await query;
+      if (error) throw error;
+      return { data: data||[], count: count||0 };
+    } catch { return { data: [], count: 0 }; }
+  }
 }
 
 export async function fetchTeamDetail(id: string){
@@ -124,7 +151,7 @@ export async function fetchTeamDetail(id: string){
       .select('id,name,description,is_archived,created_at,manager_teams(manager_id),team_memberships(user_id)')
       .eq('id', id)
       .single();
-    if (error || !raw) return null;
+    if (error || !raw) throw error || new Error('Not found');
     const team: any = raw;
     const managerIds = (team.manager_teams||[]).map((m:any)=> m.manager_id);
     const memberIds = (team.team_memberships||[]).map((m:any)=> m.user_id);
@@ -139,7 +166,27 @@ export async function fetchTeamDetail(id: string){
     } catch {}
     return { team, managers: managersRes.data||[], members: membersRes.data||[], analytics };
   } catch {
-    return null;
+    try {
+      const { data: raw } = await supabase
+        .from('teams')
+        .select('id,name,description,created_at,manager_teams(manager_id),team_memberships(user_id)')
+        .eq('id', id)
+        .single();
+      if (!raw) return null;
+      const team: any = raw;
+      const managerIds = (team.manager_teams||[]).map((m:any)=> m.manager_id);
+      const memberIds = (team.team_memberships||[]).map((m:any)=> m.user_id);
+      const [managersRes, membersRes] = await Promise.all([
+        managerIds.length ? supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', managerIds) : Promise.resolve({ data: [] }),
+        memberIds.length ? supabase.from('profiles').select('user_id,first_name,last_name,full_name,role').in('user_id', memberIds) : Promise.resolve({ data: [] })
+      ] as any);
+      let analytics: any = null;
+      try {
+        const { data: a } = await supabase.from('team_analytics').select('*').eq('team_id', id).maybeSingle();
+        analytics = a;
+      } catch {}
+      return { team, managers: managersRes.data||[], members: membersRes.data||[], analytics };
+    } catch { return null; }
   }
 }
 
@@ -275,8 +322,8 @@ export async function fetchTopLearners(limit=10){
 export async function createTeam(name: string, description: string){
   const { data, error } = await supabase
     .from('teams')
-    .insert({ name, description })
-    .select('id,name,description,is_archived,created_at')
+  .insert({ name, description })
+  .select('*')
     .single();
   if (error) throw error; return data;
 }
@@ -338,9 +385,14 @@ function toCSV(rows: any[]): string {
 }
 
 export async function exportUsersCSV(){
-  const { data, error } = await supabase.from('profiles').select('user_id,full_name,role,is_active,last_active_at,created_at');
-  if (error) throw error;
-  return toCSV(data||[]);
+  try {
+    const { data, error } = await supabase.from('profiles').select('user_id,full_name,role,is_active,last_active_at,created_at');
+    if (error) throw error;
+    return toCSV(data||[]);
+  } catch {
+    const { data } = await supabase.from('profiles').select('user_id,full_name,role,last_active_at,created_at');
+    return toCSV(data||[]);
+  }
 }
 
 export async function exportCoursesCSV(){
