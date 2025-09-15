@@ -22,6 +22,38 @@ export function AdminUsers(){
   const [csvText, setCsvText] = useState('');
   const [mode, setMode] = useState<'invite'|'create'>('invite');
   const [teamMatch, setTeamMatch] = useState<'name'|'id'>('name');
+  const [drafts, setDrafts] = useState<Record<string, { first_name: string; last_name: string; mobile_number: string }>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  const getDraft = (u: any) => drafts[u.user_id] ?? { first_name: u.first_name || '', last_name: u.last_name || '', mobile_number: u.mobile_number || '' };
+  const hasDraftChanges = (u: any) => {
+    const d = getDraft(u);
+    return (d.first_name !== (u.first_name||'')) || (d.last_name !== (u.last_name||'')) || (d.mobile_number !== (u.mobile_number||''));
+  };
+  const saveUserDraft = async (u: any) => {
+    try {
+      setSaving(s=> ({...s, [u.user_id]: true }));
+      const d = getDraft(u);
+      await updateUserProfile(u.user_id, { first_name: d.first_name, last_name: d.last_name, mobile_number: d.mobile_number });
+      toast({ title: 'Profile saved' });
+      // Optimistically align displayed data by resetting draft to normalized inputs
+      setDrafts(ds=> ({ ...ds, [u.user_id]: { ...d } }));
+      // Trigger refresh to pull latest from server
+      paged.refetch();
+    } catch(e:any){
+      toast({ title:'Save failed', description: e.message, variant:'destructive' });
+    } finally {
+      setSaving(s=> ({...s, [u.user_id]: false }));
+    }
+  };
+  const saveAll = async () => {
+    const current = (paged.data?.data||[]) as any[];
+    const dirty = current.filter(u=> hasDraftChanges(u));
+    if (!dirty.length) return;
+    for (const u of dirty){
+      await saveUserDraft(u);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -136,6 +168,14 @@ export function AdminUsers(){
           </div>
         )}
 
+        {/* Save all bar if any draft changed */}
+        {((paged.data?.data||[]) as any[]).some(u=> hasDraftChanges(u)) && (
+          <div className="p-3 border rounded-xl flex items-center gap-3 text-sm bg-muted/40">
+            <span>Unsaved changes</span>
+            <button className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground" onClick={saveAll}>Save all</button>
+          </div>
+        )}
+
         {(paged.data?.data||[]).map((u: any) => (
           <div key={u.user_id} className="p-4 border rounded-xl grid md:grid-cols-3 gap-3 items-start">
             <div className="flex items-start gap-3">
@@ -156,9 +196,9 @@ export function AdminUsers(){
             </div>
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
-                <input className="border rounded h-9 px-2 bg-background" placeholder="First name" defaultValue={u.first_name||''} onBlur={async (e)=> { await updateUserProfile(u.user_id, { first_name: e.target.value }); }} />
-                <input className="border rounded h-9 px-2 bg-background" placeholder="Last name" defaultValue={u.last_name||''} onBlur={async (e)=> { await updateUserProfile(u.user_id, { last_name: e.target.value }); }} />
-                <input className="border rounded h-9 px-2 bg-background col-span-2" placeholder="Mobile number" defaultValue={u.mobile_number||''} onBlur={async (e)=> { await updateUserProfile(u.user_id, { mobile_number: e.target.value }); }} />
+                <input className="border rounded h-9 px-2 bg-background" placeholder="First name" value={getDraft(u).first_name} onChange={(e)=> setDrafts(d=> ({...d, [u.user_id]: { ...getDraft(u), first_name: e.target.value }}))} />
+                <input className="border rounded h-9 px-2 bg-background" placeholder="Last name" value={getDraft(u).last_name} onChange={(e)=> setDrafts(d=> ({...d, [u.user_id]: { ...getDraft(u), last_name: e.target.value }}))} />
+                <input className="border rounded h-9 px-2 bg-background col-span-2" placeholder="Mobile number" value={getDraft(u).mobile_number} onChange={(e)=> setDrafts(d=> ({...d, [u.user_id]: { ...getDraft(u), mobile_number: e.target.value }}))} />
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -178,6 +218,9 @@ export function AdminUsers(){
                   <option value="">Add to team…</option>
                   {(teams.data||[]).map((t:any)=> <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+              </div>
+              <div className="ml-auto">
+                <button disabled={!hasDraftChanges(u) || saving[u.user_id]} onClick={()=> saveUserDraft(u)} className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50">{saving[u.user_id]? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           </div>
