@@ -43,7 +43,24 @@ serve(async (req) => {
     const { data: userRes } = await authClient.auth.getUser();
     const callerId = userRes.user?.id;
     if (!callerId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
-    const { data: callerProfile } = await adminClient.from('profiles').select('role').eq('user_id', callerId).maybeSingle();
+    // Detect id column name for profiles early (user_id vs id)
+    let idKey: 'user_id'|'id' = 'user_id';
+    try {
+      const probe = await adminClient.from('profiles' as any).select('user_id' as any, { head: true, count: 'exact' });
+      if (probe.error && (probe.error as any).code === '42703') idKey = 'id';
+    } catch { /* ignore */ }
+
+    let callerProfile: any = null;
+    try {
+      const try1 = await adminClient.from('profiles').select('role').eq(idKey, callerId).maybeSingle();
+      callerProfile = try1.data || null;
+      if (!callerProfile && try1.error && (try1.error as any).code === '42703') {
+        const altKey = idKey === 'user_id' ? 'id' : 'user_id';
+        const try2 = await adminClient.from('profiles' as any).select('role' as any).eq(altKey as any, callerId).maybeSingle();
+        callerProfile = try2.data || null;
+        if (!try2.error && callerProfile) idKey = altKey as any;
+      }
+    } catch { /* ignore */ }
     if (!callerProfile || !['owner','admin'].includes(callerProfile.role)) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
     // Create user
@@ -62,12 +79,7 @@ serve(async (req) => {
     if (last_name) baseProfile.last_name = last_name;
     if (mobile_number) baseProfile.mobile_number = mobile_number;
 
-    // Detect id column name: prefer user_id, fallback to id if user_id missing
-    let idKey: 'user_id'|'id' = 'user_id';
-    try {
-      const probe = await adminClient.from('profiles' as any).select('user_id' as any, { head: true, count: 'exact' });
-      if (probe.error && (probe.error as any).code === '42703') idKey = 'id';
-    } catch { /* ignore */ }
+  // idKey already detected above
 
     // Insert-or-update flow (no reliance on onConflict constraints)
     const tryInsert = async (payload: Record<string, any>) => adminClient.from('profiles').insert(payload);
