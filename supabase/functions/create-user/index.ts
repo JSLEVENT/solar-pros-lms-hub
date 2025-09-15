@@ -62,9 +62,16 @@ serve(async (req) => {
     if (last_name) baseProfile.last_name = last_name;
     if (mobile_number) baseProfile.mobile_number = mobile_number;
 
+    // Detect id column name: prefer user_id, fallback to id if user_id missing
+    let idKey: 'user_id'|'id' = 'user_id';
+    try {
+      const probe = await adminClient.from('profiles' as any).select('user_id' as any, { head: true, count: 'exact' });
+      if (probe.error && (probe.error as any).code === '42703') idKey = 'id';
+    } catch { /* ignore */ }
+
     // Insert-or-update flow (no reliance on onConflict constraints)
     const tryInsert = async (payload: Record<string, any>) => adminClient.from('profiles').insert(payload);
-    const tryUpdate = async (payload: Record<string, any>) => adminClient.from('profiles').update(payload).eq('user_id', newUserId);
+    const tryUpdate = async (payload: Record<string, any>) => adminClient.from('profiles').update(payload).eq(idKey, newUserId);
 
     const isColumnMissing = (err: any) => {
       const msg = (err && (err.message||'')) || '';
@@ -72,16 +79,18 @@ serve(async (req) => {
     };
 
     // Attempt insert with full payload
-    let ins = await tryInsert(baseProfile);
+    const profileWithKey = { ...baseProfile, [idKey]: newUserId } as any;
+    let ins = await tryInsert(profileWithKey);
     if (ins.error && isColumnMissing(ins.error)) {
       // Retry without is_active/mobile/first/last
-      const reduced: any = { user_id: newUserId, role };
+      const reduced: any = { [idKey]: newUserId, role };
       if (full_name) reduced.full_name = full_name;
       ins = await tryInsert(reduced);
     }
     if (ins.error && ins.error.code === '23505') {
       // Duplicate -> update instead
-      let upd = await tryUpdate(baseProfile);
+  const updateBody = { ...baseProfile } as any; delete updateBody.user_id; delete updateBody.id; // id is in eq() filter
+  let upd = await tryUpdate(updateBody);
       if (upd.error && isColumnMissing(upd.error)) {
         const minimal: any = { };
         if (full_name) minimal.full_name = full_name;
@@ -98,7 +107,7 @@ serve(async (req) => {
     // If mobile_number couldn't be stored due to missing column, persist into preferences.mobile_number (best-effort)
     if (mobile_number) {
       try {
-        const { data: prefRow } = await adminClient.from('profiles').select('preferences').eq('user_id', newUserId).maybeSingle();
+  const { data: prefRow } = await adminClient.from('profiles').select('preferences').eq(idKey, newUserId).maybeSingle();
         const prefs = prefRow && typeof (prefRow as any).preferences === 'object' ? (prefRow as any).preferences : {};
         if (!prefs.mobile_number) {
           const nextPrefs = { ...prefs, mobile_number };

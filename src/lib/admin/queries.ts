@@ -79,8 +79,22 @@ export async function fetchAdminStats() {
 export type AdminStats = Awaited<ReturnType<typeof fetchAdminStats>>;
 
 export async function fetchUsers() {
-  const data = await safeSelect('profiles','user_id, full_name, role, last_active_at, is_active, created_at');
-  return sortByCreated(data as any[]);
+  try {
+    const cols = ['user_id','full_name','role','last_active_at','created_at'];
+    const optional = ['is_active'];
+    const present = [...cols];
+    for (const c of optional) {
+      const probe = await supabase.from('profiles' as any).select(c as any, { head: true, count: 'exact' });
+      if (!probe.error || (probe.error as any)?.status !== 400) present.push(c);
+    }
+    const sel = present.join(', ');
+    const { data, error } = await (supabase as any).from('profiles' as any).select(sel as any).order('created_at',{ascending:false});
+    if (error) throw error;
+    return sortByCreated((data||[]) as any[]);
+  } catch {
+    const fallback = await safeSelect('profiles','*');
+    return sortByCreated(fallback as any[]);
+  }
 }
 
 export async function fetchUsersPage(page=0, pageSize=25){
