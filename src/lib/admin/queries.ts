@@ -89,17 +89,19 @@ export async function fetchUsersPage(page=0, pageSize=25){
   try {
     const { data, error, count } = await supabase
       .from('profiles')
-      .select('user_id, full_name, first_name, last_name, mobile_number, role, last_active_at, is_active, created_at', { count:'exact' })
+      .select('user_id, full_name, first_name, last_name, mobile_number, preferences, role, last_active_at, is_active, created_at', { count:'exact' })
       .order('created_at',{ascending:false})
       .range(from,to);
     if (error) throw error;
-    return { data: synthesizeNames(data||[]), count: count||0 };
+    const enriched = (data||[]).map((r:any)=> ({ ...r, mobile_number: r.mobile_number ?? r.preferences?.mobile_number ?? null }));
+    return { data: synthesizeNames(enriched), count: count||0 };
   } catch (e:any) {
     // Resilient fallback: select * then slice locally to avoid 400s from missing columns
     try {
       const all = await safeSelect('profiles','*');
       const sorted = sortByCreated(all as any[]) as any[];
-      const normalized = synthesizeNames(sorted);
+      const enriched = sorted.map((r:any)=> ({ ...r, mobile_number: r.mobile_number ?? r.preferences?.mobile_number ?? null }));
+      const normalized = synthesizeNames(enriched);
       return { data: normalized.slice(from, to+1), count: sorted.length };
     } catch { return { data: [], count: 0 }; }
   }
@@ -142,14 +144,52 @@ export async function updateUserProfile(user_id: string, payload: { first_name?:
     const { error } = await supabase.from('profiles').update(body).eq('user_id', user_id);
     if (error) throw error;
   } catch (e:any) {
+    const code = (e as any)?.code;
     // Fallback: retry with minimal columns if some are missing
-  const minimal: any = {};
-  if (body.full_name !== undefined) minimal.full_name = body.full_name;
+    const minimal: any = {};
+    if (body.full_name !== undefined) minimal.full_name = body.full_name;
     if (Object.keys(minimal).length){
       const { error } = await supabase.from('profiles').update(minimal).eq('user_id', user_id);
       if (error) throw error;
     }
+    // If mobile_number column missing, persist into preferences.mobile_number
+  if (payload.mobile_number && code === '42703'){
+      try {
+    const { data: prefRow } = await (supabase as any).from('profiles' as any).select('preferences' as any).eq('user_id', user_id).maybeSingle();
+    const prefs = (prefRow && (prefRow as any).preferences && typeof (prefRow as any).preferences === 'object') ? (prefRow as any).preferences : {};
+        const nextPrefs = { ...prefs, mobile_number: payload.mobile_number };
+    const { error: prefErr } = await (supabase as any).from('profiles' as any).update({ preferences: nextPrefs } as any).eq('user_id', user_id);
+        if (prefErr) throw prefErr;
+      } catch (pe:any) {
+        throw pe;
+      }
+    }
   }
+}
+
+// ---------------------------
+// User analytics (per user)
+// ---------------------------
+export async function fetchUserAnalyticsOverview(user_id: string){
+  const [profile, enrollments, certificates] = await Promise.all([
+    (async ()=> { const { data } = await supabase.from('profiles').select('user_id,full_name,first_name,last_name,last_active_at,role').eq('user_id', user_id).maybeSingle(); return data; })(),
+    (async ()=> { const { data } = await supabase.from('enrollments').select('status,progress').eq('user_id', user_id); return data||[]; })(),
+    (async ()=> { const { data } = await supabase.from('certificates').select('id').eq('user_id', user_id); return data||[]; })(),
+  ]);
+  const total = enrollments.length;
+  const completed = enrollments.filter((e:any)=> e.status==='completed').length;
+  const avgProgress = total? Math.round((enrollments.reduce((a:any,e:any)=> a+(e.progress||0),0)/total)) : 0;
+  return { profile, totals: { enrollments: total, completed, avgProgress }, certificates: certificates.length };
+}
+
+export async function fetchUserEnrollments(user_id: string){
+  const { data, error } = await supabase.from('enrollments').select('course_id,progress,status,created_at').eq('user_id', user_id).order('created_at',{ascending:false});
+  if (error) throw error; return data||[];
+}
+
+export async function fetchUserCertificates(user_id: string){
+  const { data, error } = await supabase.from('certificates').select('id,assessment_id,issued_at').eq('user_id', user_id).order('issued_at',{ascending:false});
+  if (error) throw error; return data||[];
 }
 
 export async function bulkUpdateUserRoles(user_ids: string[], role: 'owner'|'admin'|'manager'|'learner'){

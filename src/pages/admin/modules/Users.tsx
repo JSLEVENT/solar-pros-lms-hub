@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useUsers } from '@/hooks/admin/useUsers';
+import { Link } from 'react-router-dom';
 import { usePaginatedUsers } from '@/hooks/admin/usePaginatedUsers';
 import { useUserCreation } from '@/hooks/admin/useUserCreation';
 import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from '@/components/ui/select';
@@ -219,7 +220,8 @@ export function AdminUsers(){
                   {(teams.data||[]).map((t:any)=> <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                <Link to={`/admin/users/${u.user_id}`} className="px-3 py-2 text-sm rounded border">View analytics</Link>
                 <button disabled={!hasDraftChanges(u) || saving[u.user_id]} onClick={()=> saveUserDraft(u)} className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50">{saving[u.user_id]? 'Saving…' : 'Save'}</button>
               </div>
             </div>
