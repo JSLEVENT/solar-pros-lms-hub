@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
-import { Download, Plus, Edit, Trash2 } from 'lucide-react';
+import { Download, Plus, Edit, Trash2, Paperclip } from 'lucide-react';
 import { exportCoursesCSV, downloadCSV } from '@/lib/admin/queries';
 import { useToast } from '@/hooks/use-toast';
+import { CourseContentManager } from '@/components/admin/CourseContentManager';
 
 export function CourseManagement(){
   const { toast } = useToast();
@@ -18,6 +19,7 @@ export function CourseManagement(){
   const { createMutation, updateMutation, deleteMutation } = useCourses();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title:'', description:'', category:'', level:'beginner', duration:'' });
+  const [attachFor, setAttachFor] = useState<string|null>(null);
 
   const create = () => {
     if(!form.title || !form.description){ toast({ title:'Missing fields', variant:'destructive'}); return; }
@@ -75,6 +77,17 @@ export function CourseManagement(){
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled><Edit className="h-4 w-4"/></Button>
                 <Button variant="outline" size="sm" onClick={()=> deleteMutation.mutate(c.id)}><Trash2 className="h-4 w-4"/></Button>
+                <Dialog open={attachFor===c.id} onOpenChange={(o)=> setAttachFor(o? c.id : null)}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm"><Paperclip className="h-4 w-4 mr-1"/>Attach</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Attach Content to {c.title}</DialogTitle>
+                    </DialogHeader>
+                    <CourseContentManager courseId={c.id} />
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           ))}

@@ -468,6 +468,77 @@ export async function deleteCourse(id: string){
 }
 
 // ---------------------------------------------
+// Course Content Attachments (course_content_assets)
+// ---------------------------------------------
+export async function fetchCourseAssets(course_id: string){
+  try {
+    const { data, error } = await (supabase as any)
+      .from('course_content_assets' as any)
+      .select('asset_id,position,content_assets(*)' as any)
+      .eq('course_id', course_id)
+      .order('position', { ascending: true });
+    if (error) throw error;
+    const rows = (data||[]) as any[];
+    return rows.map(r=> ({ asset: r.content_assets, asset_id: r.asset_id, position: r.position }));
+  } catch {
+    // Fallback: fetch mapping then hydrate
+    try {
+      const { data: map } = await (supabase as any)
+        .from('course_content_assets' as any)
+        .select('asset_id,position' as any)
+        .eq('course_id', course_id)
+        .order('position', { ascending: true });
+      const ids = (map||[]).map((m:any)=> m.asset_id);
+      if (!ids.length) return [] as any[];
+      const { data: assets } = await (supabase as any)
+        .from('content_assets' as any)
+        .select('*' as any)
+        .in('id', ids);
+      const assetMap = new Map<string, any>((assets||[]).map((a:any)=> [a.id, a]));
+      return (map||[]).map((m:any)=> ({ asset: assetMap.get(m.asset_id)||null, asset_id: m.asset_id, position: m.position }));
+    } catch { return []; }
+  }
+}
+
+export async function attachCourseAssets(course_id: string, asset_ids: string[]){
+  if (!asset_ids?.length) return { inserted: 0 };
+  // Determine existing and current max position
+  const { data: existing } = await (supabase as any)
+    .from('course_content_assets' as any)
+    .select('asset_id,position' as any)
+    .eq('course_id', course_id)
+    .order('position', { ascending: true });
+  const existingIds = new Set<string>((existing||[]).map((r:any)=> r.asset_id));
+  const startPos = (existing||[]).reduce((max:number,r:any)=> Math.max(max, r.position||0), 0);
+  const toInsert = asset_ids.filter(id=> !existingIds.has(id));
+  if (!toInsert.length) return { inserted: 0 };
+  const rows = toInsert.map((id, i)=> ({ course_id, asset_id: id, position: startPos + i + 1 }));
+  const { error } = await (supabase as any).from('course_content_assets' as any).insert(rows as any);
+  if (error) throw error;
+  return { inserted: rows.length };
+}
+
+export async function detachCourseAsset(course_id: string, asset_id: string){
+  const { error } = await (supabase as any)
+    .from('course_content_assets' as any)
+    .delete()
+    .match({ course_id, asset_id } as any);
+  if (error) throw error;
+}
+
+export async function reorderCourseAssets(course_id: string, ordered_asset_ids: string[]){
+  // Update positions to match ordered_asset_ids (1-based)
+  for (let i=0;i<ordered_asset_ids.length;i++){
+    const aid = ordered_asset_ids[i];
+    const { error } = await (supabase as any)
+      .from('course_content_assets' as any)
+      .update({ position: i+1 } as any)
+      .match({ course_id, asset_id: aid } as any);
+    if (error) throw error;
+  }
+}
+
+// ---------------------------------------------
 // Pagination: Courses (for admin dashboard)
 // ---------------------------------------------
 export async function fetchCoursesPage(page=0, pageSize=25){
