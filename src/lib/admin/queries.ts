@@ -72,7 +72,7 @@ export async function fetchUsersPage(page=0, pageSize=25){
   try {
     const { data, error, count } = await supabase
       .from('profiles')
-      .select('user_id, full_name, role, last_active_at, is_active, created_at', { count:'exact' })
+      .select('user_id, full_name, first_name, last_name, mobile_number, role, last_active_at, is_active, created_at', { count:'exact' })
       .order('created_at',{ascending:false})
       .range(from,to);
     if (error) throw error;
@@ -116,6 +116,30 @@ export async function fetchTeamsForDropdown(){
     if (error) throw error;
     return data||[];
   } catch { return []; }
+}
+
+export async function updateUserProfile(user_id: string, payload: { first_name?: string; last_name?: string; mobile_number?: string; full_name?: string }){
+  // Build full_name if not provided
+  const altFull = [payload.first_name||'', payload.last_name||''].filter(Boolean).join(' ').trim();
+  const full = (payload.full_name ?? (altFull || undefined));
+  const body: any = { ...payload };
+  if (full !== undefined) body.full_name = full;
+  try {
+    const { error } = await supabase.from('profiles').update(body).eq('user_id', user_id);
+    if (error) throw error;
+  } catch (e:any) {
+    // Fallback: retry with minimal columns if some are missing
+    const minimal: any = {};
+    if (body.full_name !== undefined) minimal.full_name = body.full_name;
+    if (Object.keys(minimal).length){
+      const { error } = await supabase.from('profiles').update(minimal).eq('user_id', user_id);
+      if (error) throw error;
+    }
+  }
+}
+
+export async function bulkUpdateUserRoles(user_ids: string[], role: 'owner'|'admin'|'manager'|'learner'){
+  await Promise.all(user_ids.map(id=> updateUserRole(id, role)));
 }
 
 // ---------------------------------------------
