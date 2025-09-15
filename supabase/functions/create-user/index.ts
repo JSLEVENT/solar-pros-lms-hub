@@ -62,26 +62,37 @@ serve(async (req) => {
     if (last_name) baseProfile.last_name = last_name;
     if (mobile_number) baseProfile.mobile_number = mobile_number;
 
-    // Progressive fallback upsert to tolerate column drift
-    const upsertProfile = async (payload: Record<string, any>) => adminClient.from('profiles').upsert(payload, { onConflict: 'user_id' });
+    // Insert-or-update flow (no reliance on onConflict constraints)
+    const tryInsert = async (payload: Record<string, any>) => adminClient.from('profiles').insert(payload);
+    const tryUpdate = async (payload: Record<string, any>) => adminClient.from('profiles').update(payload).eq('user_id', newUserId);
 
-    let upErr: any = null;
-    {
-      const { error } = await upsertProfile(baseProfile);
-      upErr = error;
+    const isColumnMissing = (err: any) => {
+      const msg = (err && (err.message||'')) || '';
+      return err?.code === '42703' || /column .* does not exist/i.test(msg) || /undefined_column/i.test(msg) || err?.status === 400;
+    };
+
+    // Attempt insert with full payload
+    let ins = await tryInsert(baseProfile);
+    if (ins.error && isColumnMissing(ins.error)) {
+      // Retry without is_active/mobile/first/last
+      const reduced: any = { user_id: newUserId, role };
+      if (full_name) reduced.full_name = full_name;
+      ins = await tryInsert(reduced);
     }
-    if (upErr && upErr.code === '42703') {
-      // Remove potentially missing columns and retry
-      const { error } = await upsertProfile({ user_id: newUserId, role, full_name, is_active: true } as any);
-      upErr = error;
-    }
-    if (upErr && upErr.code === '42703') {
-      // Minimal fallback
-      const { error } = await upsertProfile({ user_id: newUserId, role, full_name } as any);
-      upErr = error;
-    }
-    if (upErr) {
-      return new Response(JSON.stringify({ error: `profile upsert failed: ${upErr.message||'unknown'}` }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    if (ins.error && ins.error.code === '23505') {
+      // Duplicate -> update instead
+      let upd = await tryUpdate(baseProfile);
+      if (upd.error && isColumnMissing(upd.error)) {
+        const minimal: any = { };
+        if (full_name) minimal.full_name = full_name;
+        minimal.role = role;
+        upd = await tryUpdate(minimal);
+      }
+      if (upd.error) {
+        return new Response(JSON.stringify({ error: `profile update failed: ${upd.error.message||'unknown'}` }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+    } else if (ins.error) {
+      return new Response(JSON.stringify({ error: `profile insert failed: ${ins.error.message||'unknown'}` }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     // If mobile_number couldn't be stored due to missing column, persist into preferences.mobile_number (best-effort)

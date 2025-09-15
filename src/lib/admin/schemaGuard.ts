@@ -26,7 +26,8 @@ export async function checkAdminSchema() {
   }
 
   const requiredTables = ['teams','profiles','courses','enrollments','learning_plans','content_assets'];
-  const optionalColumns: Record<string,string[]> = { teams:['is_archived'], profiles:['is_active'] };
+  // Avoid probing optional columns to prevent 400s in console when columns don't exist across environments
+  const optionalColumns: Record<string,string[]> = {};
   const issues: string[] = [];
 
   for (const table of requiredTables) {

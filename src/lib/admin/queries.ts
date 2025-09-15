@@ -87,9 +87,18 @@ export async function fetchUsersPage(page=0, pageSize=25){
   const from = page*pageSize;
   const to = from + pageSize - 1;
   try {
-    const { data, error, count } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, first_name, last_name, mobile_number, preferences, role, last_active_at, is_active, created_at', { count:'exact' })
+    // Probe optional columns to avoid 400s on environments lacking them
+    const cols: string[] = ['user_id','full_name','first_name','last_name','role','last_active_at','created_at'];
+    const optCols: string[] = ['mobile_number','preferences','is_active'];
+    const present: string[] = [...cols];
+    for (const c of optCols) {
+      const probe = await supabase.from('profiles' as any).select(c as any, { head: true, count: 'exact' });
+      if (!probe.error || (probe.error as any)?.status !== 400) present.push(c);
+    }
+    const selectExpr = present.join(', ');
+    const { data, error, count } = await (supabase as any)
+      .from('profiles' as any)
+      .select(selectExpr as any, { count:'exact' } as any)
       .order('created_at',{ascending:false})
       .range(from,to);
     if (error) throw error;
@@ -213,7 +222,13 @@ export async function fetchTeamsPage(params:{ page:number; pageSize:number; sear
   try {
     const from = page * pageSize;
     const to = from + pageSize - 1;
-    let query: any = supabase.from('teams').select('id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)', { count:'exact' });
+    // Probe is_archived optional column to avoid 400s
+    let selectCols = 'id,name,description,created_at,team_memberships(count),manager_teams(manager_id)';
+    const probe = await supabase.from('teams' as any).select('is_archived' as any, { head: true, count: 'exact' });
+    if (!probe.error || (probe.error as any)?.status !== 400) {
+      selectCols = 'id,name,description,is_archived,created_at,team_memberships(count),manager_teams(manager_id)';
+    }
+    let query: any = (supabase as any).from('teams' as any).select(selectCols as any, { count:'exact' } as any);
     if(!includeArchived){ query = query.eq('is_archived', false); }
     if(search){ query = query.ilike('name', `%${search}%`); }
     query = query.order('created_at',{ ascending:false }).range(from,to);
