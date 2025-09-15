@@ -1,5 +1,5 @@
 // Edge Function: invite-user
-// Invites a user by email and sets initial profile (full_name, role)
+// Invites a user by email and sets initial profile (name fields, role, mobile), optional team assignment
 // Security: only admins/owners may call (verified via JWT and profiles.role)
 // deno-lint-ignore-file
 // @ts-nocheck
@@ -26,8 +26,8 @@ serve(async (req) => {
   }
 
   try {
-    const { email, full_name, role }: { email: string; full_name: string; role: AppRole } = await req.json();
-    if (!email || !role) {
+  const { email, full_name, role, first_name, last_name, mobile_number, team_id }: { email: string; full_name?: string; role: AppRole; first_name?: string; last_name?: string; mobile_number?: string; team_id?: string } = await req.json();
+  if (!email || !role) {
       return new Response(JSON.stringify({ error: 'email and role are required' }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
@@ -72,13 +72,27 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Failed to obtain invited user id' }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    // Upsert profile with initial role and name
-    const { error: upsertErr } = await adminClient
-      .from('profiles')
-      .upsert({ user_id: newUserId, full_name: full_name || null, role }, { onConflict: 'user_id' });
-    if (upsertErr) {
-      // Not fatal for invitation, but report it
-      console.error('Profile upsert error:', upsertErr);
+    // Upsert profile with initial role and name fields
+    const resolvedFullName = full_name || [first_name||'', last_name||''].filter(Boolean).join(' ').trim() || null;
+    const profilePayload: Record<string, any> = { user_id: newUserId, role };
+    if (resolvedFullName) profilePayload.full_name = resolvedFullName;
+    if (first_name) profilePayload.first_name = first_name;
+    if (last_name) profilePayload.last_name = last_name;
+    if (mobile_number) profilePayload.mobile_number = mobile_number;
+    let { error: upsertErr } = await adminClient.from('profiles').upsert(profilePayload, { onConflict: 'user_id' });
+    if (upsertErr && (upsertErr as any).code === '42703') {
+      // Column mismatch; retry with minimal set
+      const retry = { user_id: newUserId, role, full_name: resolvedFullName };
+      const { error: up2 } = await adminClient.from('profiles').upsert(retry, { onConflict: 'user_id' });
+      if (up2) console.error('Profile upsert retry error:', up2);
+    }
+
+    // Optional team membership
+    if (team_id) {
+      const { error: tmErr } = await adminClient.from('team_memberships').insert({ team_id, user_id: newUserId });
+      if (tmErr && (tmErr as any).code !== '23505') {
+        console.error('team_memberships insert error', tmErr);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, user_id: newUserId }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });

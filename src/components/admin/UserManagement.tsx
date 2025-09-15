@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { usePaginatedUsers } from '@/hooks/admin/usePaginatedUsers';
 import { useUsers } from '@/hooks/admin/useUsers';
+import { useUserCreation } from '@/hooks/admin/useUserCreation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ModernCard, ModernCardContent } from '@/components/ui/modern-card';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, UserPlus } from 'lucide-react';
 import { exportUsersCSV, downloadCSV } from '@/lib/admin/queries';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,13 +16,24 @@ export function UserManagement(){
   const { toast } = useToast();
   const { data: pageData, isLoading, page, setPage, pageSize } = usePaginatedUsers(25);
   const { roleMutation, activeMutation, inviteMutation } = useUsers();
+  const { teams, createMutation, inviteMutation: inviteAdv } = useUserCreation();
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [form, setForm] = useState({ email:'', full_name:'', role:'learner' });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email:'', first_name:'', last_name:'', mobile_number:'', role:'learner', team_id:'' });
+  const [createForm, setCreateForm] = useState({ email:'', first_name:'', last_name:'', mobile_number:'', role:'learner', team_id:'' });
 
   const sendInvite = () => {
-    inviteMutation.mutate({ email: form.email, full_name: form.full_name, role: form.role as any }, {
-      onSuccess: ()=> { setForm({ email:'', full_name:'', role:'learner' }); setInviteOpen(false); toast({ title:'Invitation sent'}); },
+    const full_name = [inviteForm.first_name, inviteForm.last_name].filter(Boolean).join(' ').trim();
+    inviteAdv.mutate({ email: inviteForm.email, first_name: inviteForm.first_name||undefined, last_name: inviteForm.last_name||undefined, mobile_number: inviteForm.mobile_number||undefined, role: inviteForm.role as any, team_id: inviteForm.team_id||undefined, full_name }, {
+      onSuccess: ()=> { setInviteForm({ email:'', first_name:'', last_name:'', mobile_number:'', role:'learner', team_id:'' }); setInviteOpen(false); toast({ title:'Invitation sent'}); },
       onError: (e:any)=> toast({ title:'Invite failed', description: e.message, variant:'destructive' })
+    });
+  };
+
+  const createUser = () => {
+    createMutation.mutate({ email: createForm.email, first_name: createForm.first_name||undefined, last_name: createForm.last_name||undefined, mobile_number: createForm.mobile_number||undefined, role: createForm.role as any, team_id: createForm.team_id||undefined }, {
+      onSuccess: ()=> { setCreateForm({ email:'', first_name:'', last_name:'', mobile_number:'', role:'learner', team_id:'' }); setCreateOpen(false); toast({ title:'User created'}); },
+      onError: (e:any)=> toast({ title:'Create failed', description: e.message, variant:'destructive' })
     });
   };
 
@@ -35,16 +47,15 @@ export function UserManagement(){
         <h2 className="text-2xl font-semibold">User Management</h2>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCSV}><Download className="h-4 w-4 mr-2"/>Export CSV</Button>
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2"/>Invite User</Button>
+              <Button variant="secondary"><UserPlus className="h-4 w-4 mr-2"/>Create User</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <Input placeholder="Email" value={form.email} onChange={e=> setForm(f=>({...f,email:e.target.value}))}/>
-                <Input placeholder="Full Name" value={form.full_name} onChange={e=> setForm(f=>({...f,full_name:e.target.value}))}/>
-                <Select value={form.role} onValueChange={v=> setForm(f=>({...f, role:v}))}>
+              <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input placeholder="Email" value={createForm.email} onChange={e=> setCreateForm(f=>({...f,email:e.target.value}))}/>
+                <Select value={createForm.role} onValueChange={v=> setCreateForm(f=>({...f, role:v}))}>
                   <SelectTrigger><SelectValue placeholder="Role"/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="learner">Learner</SelectItem>
@@ -53,8 +64,47 @@ export function UserManagement(){
                     <SelectItem value="owner">Owner</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button disabled={inviteMutation.isPending} onClick={sendInvite}>{inviteMutation.isPending? 'Sending...' : 'Send Invite'}</Button>
+                <Input placeholder="First name" value={createForm.first_name} onChange={e=> setCreateForm(f=>({...f,first_name:e.target.value}))}/>
+                <Input placeholder="Last name" value={createForm.last_name} onChange={e=> setCreateForm(f=>({...f,last_name:e.target.value}))}/>
+                <Input placeholder="Mobile number" value={createForm.mobile_number} onChange={e=> setCreateForm(f=>({...f,mobile_number:e.target.value}))}/>
+                <Select value={createForm.team_id} onValueChange={v=> setCreateForm(f=>({...f, team_id: v}))}>
+                  <SelectTrigger><SelectValue placeholder="Assign to team (optional)"/></SelectTrigger>
+                  <SelectContent>
+                    {(teams.data||[]).map((t:any)=> <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
+              <Button disabled={!createForm.email || createMutation.isPending} onClick={createUser}>{createMutation.isPending? 'Creating...' : 'Create'}</Button>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4 mr-2"/>Invite User</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input placeholder="Email" value={inviteForm.email} onChange={e=> setInviteForm(f=>({...f,email:e.target.value}))}/>
+                <Select value={inviteForm.role} onValueChange={v=> setInviteForm(f=>({...f, role:v}))}>
+                  <SelectTrigger><SelectValue placeholder="Role"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="learner">Learner</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="owner">Owner</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input placeholder="First name" value={inviteForm.first_name} onChange={e=> setInviteForm(f=>({...f,first_name:e.target.value}))}/>
+                <Input placeholder="Last name" value={inviteForm.last_name} onChange={e=> setInviteForm(f=>({...f,last_name:e.target.value}))}/>
+                <Input placeholder="Mobile number" value={inviteForm.mobile_number} onChange={e=> setInviteForm(f=>({...f,mobile_number:e.target.value}))}/>
+                <Select value={inviteForm.team_id} onValueChange={v=> setInviteForm(f=>({...f, team_id: v}))}>
+                  <SelectTrigger><SelectValue placeholder="Assign to team (optional)"/></SelectTrigger>
+                  <SelectContent>
+                    {(teams.data||[]).map((t:any)=> <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button disabled={!inviteForm.email || inviteAdv.isPending} onClick={sendInvite}>{inviteAdv.isPending? 'Sending...' : 'Send Invite'}</Button>
             </DialogContent>
           </Dialog>
         </div>

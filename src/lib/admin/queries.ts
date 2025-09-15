@@ -105,6 +105,19 @@ export async function inviteUser(payload: { email:string; full_name?:string; rol
   if (error) throw error; return data;
 }
 
+export async function createUserDirect(payload: { email:string; first_name?:string; last_name?:string; mobile_number?:string; role:'owner'|'admin'|'manager'|'learner'; team_id?: string }){
+  const { data, error } = await supabase.functions.invoke('create-user', { body: payload });
+  if (error) throw error; return data;
+}
+
+export async function fetchTeamsForDropdown(){
+  try {
+    const { data, error } = await supabase.from('teams').select('id,name').order('name');
+    if (error) throw error;
+    return data||[];
+  } catch { return []; }
+}
+
 // ---------------------------------------------
 // Teams (simple list legacy) - kept for backward compatibility
 // Prefer paginated functions below in new UI
