@@ -78,15 +78,11 @@ export async function fetchUsersPage(page=0, pageSize=25){
     if (error) throw error;
     return { data: data||[], count: count||0 };
   } catch (e:any) {
-    // Fallback for older schema without is_active
+    // Resilient fallback: select * then slice locally to avoid 400s from missing columns
     try {
-      const { data, error, count } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, role, last_active_at, created_at', { count:'exact' })
-        .order('created_at',{ascending:false})
-        .range(from,to);
-      if (error) throw error;
-      return { data: data||[], count: count||0 };
+      const all = await safeSelect('profiles','*');
+      const sorted = sortByCreated(all as any[]) as any[];
+      return { data: sorted.slice(from, to+1), count: sorted.length };
     } catch { return { data: [], count: 0 }; }
   }
 }
@@ -112,9 +108,9 @@ export async function createUserDirect(payload: { email:string; first_name?:stri
 
 export async function fetchTeamsForDropdown(){
   try {
-    const { data, error } = await supabase.from('teams').select('id,name').order('name');
-    if (error) throw error;
-    return data||[];
+  const { data, error } = await supabase.from('teams').select('id,name').order('name');
+  if (error) throw error;
+  return data||[];
   } catch { return []; }
 }
 
