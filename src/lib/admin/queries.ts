@@ -28,6 +28,23 @@ function sortByCreated(a: SimpleRecord[], desc = true){
   return [...a].sort((x,y)=> (desc?1:-1) * ( (y.created_at||'').localeCompare(x.created_at||'') ));
 }
 
+function synthesizeNames(rows: any[]): any[] {
+  return (rows||[]).map((r:any)=>{
+    const full = (r.full_name||'').toString();
+    const hasFirst = Object.prototype.hasOwnProperty.call(r,'first_name');
+    const hasLast = Object.prototype.hasOwnProperty.call(r,'last_name');
+    if (!hasFirst || r.first_name == null){
+      const idx = full.lastIndexOf(' ');
+      r.first_name = idx>0 ? full.slice(0, idx) : (full || null);
+    }
+    if (!hasLast || r.last_name == null){
+      const idx = full.lastIndexOf(' ');
+      r.last_name = idx>0 ? full.slice(idx+1) : null;
+    }
+    return r;
+  });
+}
+
 // ---------------------------------------------
 // Admin summary / users
 // ---------------------------------------------
@@ -76,13 +93,14 @@ export async function fetchUsersPage(page=0, pageSize=25){
       .order('created_at',{ascending:false})
       .range(from,to);
     if (error) throw error;
-    return { data: data||[], count: count||0 };
+    return { data: synthesizeNames(data||[]), count: count||0 };
   } catch (e:any) {
     // Resilient fallback: select * then slice locally to avoid 400s from missing columns
     try {
       const all = await safeSelect('profiles','*');
       const sorted = sortByCreated(all as any[]) as any[];
-      return { data: sorted.slice(from, to+1), count: sorted.length };
+      const normalized = synthesizeNames(sorted);
+      return { data: normalized.slice(from, to+1), count: sorted.length };
     } catch { return { data: [], count: 0 }; }
   }
 }
@@ -125,8 +143,8 @@ export async function updateUserProfile(user_id: string, payload: { first_name?:
     if (error) throw error;
   } catch (e:any) {
     // Fallback: retry with minimal columns if some are missing
-    const minimal: any = {};
-    if (body.full_name !== undefined) minimal.full_name = body.full_name;
+  const minimal: any = {};
+  if (body.full_name !== undefined) minimal.full_name = body.full_name;
     if (Object.keys(minimal).length){
       const { error } = await supabase.from('profiles').update(minimal).eq('user_id', user_id);
       if (error) throw error;
