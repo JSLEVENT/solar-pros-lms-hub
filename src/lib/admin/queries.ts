@@ -452,3 +452,16 @@ export async function downloadCSV(filename: string, csv: string){
   URL.revokeObjectURL(url);
 }
 
+export function usersCSVTemplate(){
+  return [
+    'email,first_name,last_name,mobile_number,role,team_name,team_id',
+    'jane@example.com,Jane,Doe,555-111-2222,learner,Sales,',
+    'john@example.com,John,Smith,555-333-4444,manager,,20a6c2f0-1111-2222-3333-444455556666'
+  ].join('\n');
+}
+
+export async function bulkImportUsers(payload: { csv?: string; rows?: any[]; mode?: 'invite'|'create'; teamMatch?: 'name'|'id' }){
+  const { data, error } = await supabase.functions.invoke('bulk-import-users', { body: payload as any });
+  if (error) throw error; return data;
+}
+

@@ -6,7 +6,8 @@ import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from '@
 import { Badge } from '@/components/ui/badge';
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserProfile, bulkAddMembers, fetchTeamsForDropdown, bulkUpdateUserRoles } from '@/lib/admin/queries';
+import { updateUserProfile, bulkAddMembers, bulkUpdateUserRoles, usersCSVTemplate, bulkImportUsers, downloadCSV } from '@/lib/admin/queries';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export function AdminUsers(){
   const { toast } = useToast();
@@ -17,9 +18,52 @@ export function AdminUsers(){
   const [createForm, setCreateForm] = useState({ email:'', first_name:'', last_name:'', mobile_number:'', role:'learner', team_id:'' });
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const allSelectedIds = useMemo(()=> Object.keys(selected).filter(k=> selected[k]), [selected]);
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [mode, setMode] = useState<'invite'|'create'>('invite');
+  const [teamMatch, setTeamMatch] = useState<'name'|'id'>('name');
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Users</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Users</h1>
+        <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+          <DialogTrigger asChild>
+            <button className="px-3 py-2 text-sm rounded border">Upload CSV</button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Bulk Import Users</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="flex gap-2 items-center text-sm">
+                <label className="text-sm">Mode</label>
+                <select className="border rounded h-8 px-2" value={mode} onChange={e=> setMode(e.target.value as any)}>
+                  <option value="invite">Invite (sends invite email)</option>
+                  <option value="create">Create (no email)</option>
+                </select>
+                <label className="text-sm ml-4">Team match by</label>
+                <select className="border rounded h-8 px-2" value={teamMatch} onChange={e=> setTeamMatch(e.target.value as any)}>
+                  <option value="name">Team name (team_name)</option>
+                  <option value="id">Team id (team_id)</option>
+                </select>
+                <button className="ml-auto text-xs px-2 py-1 border rounded" onClick={()=> downloadCSV('users-template.csv', usersCSVTemplate())}>Download template</button>
+              </div>
+              <textarea className="w-full h-48 border rounded p-2 font-mono text-xs bg-background" placeholder="Paste CSV here or upload a file" value={csvText} onChange={e=> setCsvText(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                <button className="px-3 py-2 text-sm rounded border" onClick={()=> setCsvOpen(false)}>Cancel</button>
+                <button className="px-3 py-2 text-sm rounded bg-primary text-primary-foreground" disabled={!csvText.trim()} onClick={async ()=>{
+                  try {
+                    const res = await bulkImportUsers({ csv: csvText, mode, teamMatch });
+                    toast({ title: `Imported ${res.summary.succeeded}/${res.summary.total}`, description: res.summary.failed? `${res.summary.failed} failed` : undefined });
+                    setCsvText(''); setCsvOpen(false); paged.refetch();
+                  } catch (e:any) {
+                    toast({ title:'Import failed', description: e.message, variant:'destructive' });
+                  }
+                }}>Import</button>
+              </div>
+              <p className="text-xs text-muted-foreground">CSV columns: email, first_name, last_name, mobile_number, role, team_name, team_id</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       <div className="border rounded-xl p-4 space-y-3">
         <p className="font-medium text-sm">Create User</p>
         <div className="grid md:grid-cols-6 gap-2">
